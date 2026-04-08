@@ -12,6 +12,8 @@ import BackgroundPanel from "./components/panels/BackgroundPanel";
 import StylePanel from "./components/panels/StylePanel";
 import ToolPanel from "./components/panels/ToolPanel";
 import AspectRatioPanel from "./components/panels/AspectRatioPanel";
+import ShortcutsModal from "./components/shell/ShortcutsModal";
+import { useHotkeys } from "./hooks/useHotkeys";
 
 type View = "main" | "settings";
 
@@ -21,6 +23,9 @@ export default function App() {
   const lastCapturePath = useAppStore((s) => s.lastCapturePath);
   const setCaptureState = useAppStore((s) => s.setCaptureState);
   const [view, setView] = useState<View>("main");
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  useHotkeys();
 
   const {
     handleFullscreen,
@@ -133,6 +138,12 @@ export default function App() {
         )}
 
         <button
+          onClick={() => setShowShortcuts(true)}
+          className="px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-200 rounded-lg hover:bg-neutral-800 transition-colors"
+        >
+          Shortcuts
+        </button>
+        <button
           onClick={() => setView("settings")}
           className="px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-200 rounded-lg hover:bg-neutral-800 transition-colors"
         >
@@ -164,6 +175,11 @@ export default function App() {
           onSelect={handleWindowSelect}
           onCancel={() => setCaptureState("idle")}
         />
+      )}
+
+      {/* Shortcuts modal */}
+      {showShortcuts && (
+        <ShortcutsModal onClose={() => setShowShortcuts(false)} />
       )}
     </div>
   );
