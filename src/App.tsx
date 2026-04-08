@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { useAppStore } from "./stores/app.store";
+import { useCanvasStore } from "./stores/canvas.store";
 import { useCaptureFlow } from "./hooks/useCaptureFlow";
 import RegionOverlay from "./components/capture/RegionOverlay";
 import WindowPicker from "./components/capture/WindowPicker";
 import WaylandBanner from "./components/shell/WaylandBanner";
 import SettingsPage from "./components/shell/SettingsPage";
+import CanvasStage, { addScreenshotToCanvas } from "./components/canvas/CanvasStage";
+import BackgroundPanel from "./components/panels/BackgroundPanel";
+import StylePanel from "./components/panels/StylePanel";
+import ToolPanel from "./components/panels/ToolPanel";
+import AspectRatioPanel from "./components/panels/AspectRatioPanel";
 
 type View = "main" | "settings";
 
@@ -14,6 +19,7 @@ export default function App() {
   const setWayland = useAppStore((s) => s.setWayland);
   const captureState = useAppStore((s) => s.captureState);
   const lastCapturePath = useAppStore((s) => s.lastCapturePath);
+  const setCaptureState = useAppStore((s) => s.setCaptureState);
   const [view, setView] = useState<View>("main");
 
   const {
@@ -46,6 +52,38 @@ export default function App() {
     };
   }, []);
 
+  // When a capture completes, add it to the canvas
+  useEffect(() => {
+    if (captureState === "captured" && lastCapturePath) {
+      addScreenshotToCanvas(lastCapturePath);
+      setCaptureState("idle");
+    }
+  }, [captureState, lastCapturePath, setCaptureState]);
+
+  // Undo/redo keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        useCanvasStore.temporal.getState().undo();
+      }
+      if (mod && e.key === "z" && e.shiftKey) {
+        e.preventDefault();
+        useCanvasStore.temporal.getState().redo();
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const { selectedId } = useCanvasStore.getState();
+        if (selectedId) {
+          e.preventDefault();
+          useCanvasStore.getState().removeSelected();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Region selection overlay
   if (captureState === "selecting-region") {
     return (
@@ -61,14 +99,12 @@ export default function App() {
     return <SettingsPage onBack={() => setView("main")} />;
   }
 
-  const imageUrl = lastCapturePath ? convertFileSrc(lastCapturePath) : null;
-
   return (
     <div className="flex h-screen flex-col bg-neutral-950 text-neutral-100">
       <WaylandBanner />
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-neutral-800">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-neutral-800">
         <button
           onClick={() => void handleFullscreen()}
           className="px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
@@ -76,23 +112,25 @@ export default function App() {
           Full Screen
         </button>
         <button
-          onClick={() =>
-            useAppStore.getState().setCaptureState("selecting-region")
-          }
+          onClick={() => setCaptureState("selecting-region")}
           className="px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
         >
           Region
         </button>
         <button
-          onClick={() =>
-            useAppStore.getState().setCaptureState("selecting-window")
-          }
+          onClick={() => setCaptureState("selecting-window")}
           className="px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
         >
           Window
         </button>
 
         <div className="flex-1" />
+
+        {captureState === "capturing" && (
+          <span className="text-xs text-neutral-500 animate-pulse">
+            Capturing...
+          </span>
+        )}
 
         <button
           onClick={() => setView("settings")}
@@ -102,39 +140,29 @@ export default function App() {
         </button>
       </div>
 
-      {/* Canvas area */}
-      <main className="flex-1 flex items-center justify-center overflow-hidden p-4">
-        {captureState === "capturing" && (
-          <p className="text-neutral-500 text-sm animate-pulse">
-            Capturing...
-          </p>
-        )}
+      {/* Main content: sidebar + canvas */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left sidebar */}
+        <aside className="w-56 border-r border-neutral-800 overflow-y-auto p-3 space-y-6 shrink-0">
+          <ToolPanel />
+          <AspectRatioPanel />
+        </aside>
 
-        {imageUrl && captureState === "captured" && (
-          <img
-            src={imageUrl}
-            alt="Screenshot"
-            className="max-w-full max-h-full rounded-lg shadow-2xl object-contain"
-          />
-        )}
+        {/* Canvas */}
+        <CanvasStage />
 
-        {captureState === "idle" && !imageUrl && (
-          <div className="text-center">
-            <p className="text-neutral-500 text-sm mb-2">
-              No screenshot yet
-            </p>
-            <p className="text-neutral-600 text-xs">
-              Use the toolbar, system tray, or hotkeys to capture
-            </p>
-          </div>
-        )}
-      </main>
+        {/* Right sidebar */}
+        <aside className="w-56 border-l border-neutral-800 overflow-y-auto p-3 space-y-6 shrink-0">
+          <BackgroundPanel />
+          <StylePanel />
+        </aside>
+      </div>
 
       {/* Window picker modal */}
       {captureState === "selecting-window" && (
         <WindowPicker
           onSelect={handleWindowSelect}
-          onCancel={() => useAppStore.getState().setCaptureState("idle")}
+          onCancel={() => setCaptureState("idle")}
         />
       )}
     </div>
