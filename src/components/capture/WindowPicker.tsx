@@ -1,0 +1,106 @@
+import { useEffect, useState } from "react";
+import { listWindows, type WindowInfo } from "../../ipc/capture";
+
+interface WindowPickerProps {
+  onSelect: (windowId: number) => void;
+  onCancel: () => void;
+}
+
+/**
+ * Modal overlay listing all capturable windows.
+ * User clicks a window entry to capture it.
+ */
+export default function WindowPicker({ onSelect, onCancel }: WindowPickerProps) {
+  const [windows, setWindows] = useState<WindowInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listWindows()
+      .then((w) => {
+        if (!cancelled) {
+          setWindows(w);
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(String(e));
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-lg rounded-xl bg-neutral-900 border border-neutral-800 shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
+          <h2 className="text-sm font-medium text-neutral-200">
+            Select a window to capture
+          </h2>
+          <button
+            onClick={onCancel}
+            className="text-neutral-500 hover:text-neutral-300 text-sm"
+          >
+            Esc
+          </button>
+        </div>
+
+        <div className="max-h-80 overflow-y-auto">
+          {loading && (
+            <div className="px-5 py-8 text-center text-neutral-500 text-sm">
+              Loading windows...
+            </div>
+          )}
+
+          {error && (
+            <div className="px-5 py-8 text-center text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          {!loading && !error && windows.length === 0 && (
+            <div className="px-5 py-8 text-center text-neutral-500 text-sm">
+              No capturable windows found
+            </div>
+          )}
+
+          {windows.map((w) => (
+            <button
+              key={w.id}
+              onClick={() => onSelect(w.id)}
+              className="w-full px-5 py-3 flex items-center gap-3 hover:bg-neutral-800 transition-colors text-left border-b border-neutral-800/50 last:border-0"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="text-sm text-neutral-200 truncate">
+                  {w.title}
+                </div>
+                <div className="text-xs text-neutral-500 truncate">
+                  {w.app_name}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

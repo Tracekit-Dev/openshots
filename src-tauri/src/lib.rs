@@ -1,10 +1,145 @@
-use tauri::{Emitter, Manager};
+use tauri::{
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Emitter, Manager,
+};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 mod commands;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PlatformFlags {
     pub is_wayland: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct HotkeyConfig {
+    pub capture_region: String,
+    pub capture_fullscreen: String,
+    pub capture_window: String,
+}
+
+impl Default for HotkeyConfig {
+    fn default() -> Self {
+        Self {
+            capture_region: "CommandOrControl+Shift+3".to_string(),
+            capture_fullscreen: "CommandOrControl+Shift+4".to_string(),
+            capture_window: "CommandOrControl+Shift+5".to_string(),
+        }
+    }
+}
+
+fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    let capture_region =
+        MenuItem::with_id(app, "capture-region", "Capture Region", true, None::<&str>)?;
+    let capture_screen = MenuItem::with_id(
+        app,
+        "capture-screen",
+        "Capture Full Screen",
+        true,
+        None::<&str>,
+    )?;
+    let capture_window_item =
+        MenuItem::with_id(app, "capture-window", "Capture Window", true, None::<&str>)?;
+    let sep = PredefinedMenuItem::separator(app)?;
+    let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Screenshots", true, None::<&str>)?;
+
+    let menu = Menu::with_items(
+        app,
+        &[
+            &capture_region,
+            &capture_screen,
+            &capture_window_item,
+            &sep,
+            &settings,
+            &quit,
+        ],
+    )?;
+
+    TrayIconBuilder::new()
+        .icon(app.default_window_icon().unwrap().clone())
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "capture-region" => {
+                let _ = app.emit("capture:region", ());
+            }
+            "capture-screen" => {
+                let _ = app.emit("capture:screen", ());
+            }
+            "capture-window" => {
+                let _ = app.emit("capture:window", ());
+            }
+            "settings" => {
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = app.emit("navigate", "/settings");
+                    let _ = win.show();
+                    let _ = win.set_focus();
+                }
+            }
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                let app = tray.app_handle();
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.show();
+                    let _ = win.set_focus();
+                }
+            }
+        })
+        .build(app)?;
+    Ok(())
+}
+
+fn register_shortcuts(app: &tauri::AppHandle, config: &HotkeyConfig) {
+    if let Some(flags) = app.try_state::<PlatformFlags>() {
+        if flags.is_wayland {
+            return;
+        }
+    }
+
+    let _ = app.global_shortcut().unregister_all();
+
+    let Ok(region_sc) = config.capture_region.parse::<Shortcut>() else {
+        return;
+    };
+    let Ok(fullscreen_sc) = config.capture_fullscreen.parse::<Shortcut>() else {
+        return;
+    };
+    let Ok(window_sc) = config.capture_window.parse::<Shortcut>() else {
+        return;
+    };
+
+    let handle = app.clone();
+    let _ = app.global_shortcut().on_shortcuts(
+        [region_sc, fullscreen_sc, window_sc],
+        move |_app, shortcut, event| {
+            if event.state() != ShortcutState::Pressed {
+                return;
+            }
+            if shortcut == &region_sc {
+                let _ = handle.emit("capture:region", ());
+            } else if shortcut == &fullscreen_sc {
+                let _ = handle.emit("capture:screen", ());
+            } else if shortcut == &window_sc {
+                let _ = handle.emit("capture:window", ());
+            }
+        },
+    );
+}
+
+#[tauri::command]
+fn update_hotkeys(app: tauri::AppHandle, config: HotkeyConfig) -> Result<(), String> {
+    register_shortcuts(&app, &config);
+    Ok(())
 }
 
 pub fn run() {
@@ -17,8 +152,9 @@ pub fn run() {
         .manage(PlatformFlags { is_wayland })
         .setup(move |app| {
             let handle = app.handle();
-            let flags = PlatformFlags { is_wayland };
-            handle.emit("platform:flags", &flags)?;
+            setup_tray(handle)?;
+            register_shortcuts(handle, &HotkeyConfig::default());
+            handle.emit("platform:flags", PlatformFlags { is_wayland })?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -27,6 +163,7 @@ pub fn run() {
             commands::capture::list_windows,
             commands::capture::capture_window,
             commands::capture::check_screen_permission,
+            update_hotkeys,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

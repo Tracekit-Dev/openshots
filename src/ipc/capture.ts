@@ -53,3 +53,14 @@ export async function captureWindow(windowId: number): Promise<string> {
 export async function checkScreenPermission(): Promise<boolean> {
   return invoke<boolean>("check_screen_permission");
 }
+
+/**
+ * Update global hotkey registrations at runtime.
+ */
+export async function updateHotkeys(config: {
+  capture_region: string;
+  capture_fullscreen: string;
+  capture_window: string;
+}): Promise<void> {
+  return invoke("update_hotkeys", { config });
+}
