@@ -149,6 +149,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .manage(PlatformFlags { is_wayland })
         .setup(move |app| {
             let handle = app.handle();
@@ -163,6 +164,7 @@ pub fn run() {
             commands::capture::list_windows,
             commands::capture::capture_window,
             commands::capture::check_screen_permission,
+            commands::export::export_image,
             update_hotkeys,
         ])
         .run(tauri::generate_context!())

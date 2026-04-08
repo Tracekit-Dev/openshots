@@ -16,9 +16,12 @@ import PrivacyLayer from "./PrivacyLayer";
  * - Click-to-deselect on empty area
  * - Annotation drawing on canvas click
  */
-export default function CanvasStage() {
+interface CanvasStageProps {
+  stageRef: React.RefObject<Konva.Stage | null>;
+}
+
+export default function CanvasStage({ stageRef }: CanvasStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<Konva.Stage>(null);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
 
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);

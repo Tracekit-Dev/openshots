@@ -1,0 +1,163 @@
+import { useState } from "react";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { exportCanvas, type ExportFormat } from "../../ipc/export";
+import Konva from "konva";
+
+interface ExportPanelProps {
+  stageRef: React.RefObject<Konva.Stage | null>;
+}
+
+export default function ExportPanel({ stageRef }: ExportPanelProps) {
+  const [format, setFormat] = useState<ExportFormat>("png");
+  const [quality, setQuality] = useState(90);
+  const [scale, setScale] = useState(1);
+  const [exporting, setExporting] = useState(false);
+  const [lastExport, setLastExport] = useState<string | null>(null);
+  const canvasWidth = useCanvasStore((s) => s.canvasWidth);
+  const canvasHeight = useCanvasStore((s) => s.canvasHeight);
+
+  const handleExport = async () => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    setExporting(true);
+    try {
+      // Render at full canvas resolution
+      const dataUrl = stage.toDataURL({
+        pixelRatio: scale,
+        mimeType: format === "png" ? "image/png" : "image/jpeg",
+        quality: quality / 100,
+      });
+
+      // Convert data URL to raw RGBA pixel data
+      const img = new window.Image();
+      img.src = dataUrl;
+      await new Promise<void>((resolve) => { img.onload = () => resolve(); });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = canvasWidth * scale;
+      canvas.height = canvasHeight * scale;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      const result = await exportCanvas(
+        new Uint8Array(imageData.data.buffer),
+        canvas.width,
+        canvas.height,
+        { format, quality, scale: 1 }, // scale already applied
+      );
+
+      if (result) setLastExport(result);
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleCopyToClipboard = async () => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    try {
+      const dataUrl = stage.toDataURL({ pixelRatio: 2 });
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob }),
+      ]);
+      setLastExport("Copied to clipboard!");
+      setTimeout(() => setLastExport(null), 2000);
+    } catch (err) {
+      console.error("Copy to clipboard failed:", err);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+        Export
+      </h3>
+
+      {/* Format */}
+      <div className="flex gap-1">
+        {(["png", "jpeg", "webp"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFormat(f)}
+            className={`px-2 py-1 text-xs rounded uppercase ${
+              format === f
+                ? "bg-indigo-600 text-white"
+                : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {/* Quality (JPEG/WebP only) */}
+      {format !== "png" && (
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-neutral-500 w-12">Quality</label>
+          <input
+            type="range"
+            min={10}
+            max={100}
+            value={quality}
+            onChange={(e) => setQuality(Number(e.target.value))}
+            className="flex-1"
+          />
+          <span className="text-xs text-neutral-500 w-8 text-right">
+            {quality}%
+          </span>
+        </div>
+      )}
+
+      {/* Scale */}
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-neutral-500 w-12">Scale</label>
+        <div className="flex gap-1">
+          {[1, 2, 3].map((s) => (
+            <button
+              key={s}
+              onClick={() => setScale(s)}
+              className={`px-2 py-1 text-xs rounded ${
+                scale === s
+                  ? "bg-indigo-600 text-white"
+                  : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+              }`}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-[10px] text-neutral-600">
+        Output: {canvasWidth * scale} x {canvasHeight * scale}
+      </p>
+
+      {/* Export buttons */}
+      <button
+        onClick={handleExport}
+        disabled={exporting}
+        className="w-full px-3 py-2 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+      >
+        {exporting ? "Exporting..." : "Save to File"}
+      </button>
+
+      <button
+        onClick={handleCopyToClipboard}
+        className="w-full px-3 py-1.5 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
+      >
+        Copy to Clipboard
+      </button>
+
+      {lastExport && (
+        <p className="text-[10px] text-green-400 truncate">{lastExport}</p>
+      )}
+    </div>
+  );
+}

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import Konva from "konva";
 import { useAppStore } from "./stores/app.store";
 import { useCanvasStore } from "./stores/canvas.store";
 import { useCaptureFlow } from "./hooks/useCaptureFlow";
@@ -12,6 +13,8 @@ import BackgroundPanel from "./components/panels/BackgroundPanel";
 import StylePanel from "./components/panels/StylePanel";
 import ToolPanel from "./components/panels/ToolPanel";
 import AspectRatioPanel from "./components/panels/AspectRatioPanel";
+import ExportPanel from "./components/panels/ExportPanel";
+import PresetPanel from "./components/panels/PresetPanel";
 import ShortcutsModal from "./components/shell/ShortcutsModal";
 import { useHotkeys } from "./hooks/useHotkeys";
 
@@ -24,6 +27,7 @@ export default function App() {
   const setCaptureState = useAppStore((s) => s.setCaptureState);
   const [view, setView] = useState<View>("main");
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const stageRef = useRef<Konva.Stage>(null);
 
   useHotkeys();
 
@@ -160,12 +164,14 @@ export default function App() {
         </aside>
 
         {/* Canvas */}
-        <CanvasStage />
+        <CanvasStage stageRef={stageRef} />
 
         {/* Right sidebar */}
         <aside className="w-56 border-l border-neutral-800 overflow-y-auto p-3 space-y-6 shrink-0">
           <BackgroundPanel />
           <StylePanel />
+          <PresetPanel />
+          <ExportPanel stageRef={stageRef} />
         </aside>
       </div>
 
