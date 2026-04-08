@@ -28,7 +28,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can configure custom hotkeys for each capture mode in settings
   4. User on Linux (Wayland) can trigger capture via system tray click when global hotkeys are unavailable, and sees an informational banner explaining the limitation
   5. macOS prompts the user to grant Screen Recording permission on first capture and provides a recovery path when permission is revoked
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — Rust install, Tauri scaffold, layered project structure, typed IPC contracts
+- [ ] 01-02-PLAN.md — System tray, global shortcuts, xcap capture pipeline, region overlay, window picker, hotkey settings, Wayland fallback
 **UI hint**: yes
 
 ### Phase 2: Canvas Editor and Beautification
@@ -41,7 +44,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can draw arrows, rectangles, ellipses, text labels, and emoji stickers on the canvas, then select, move, resize, and delete them
   4. User can blur or pixelate a selected region of a screenshot to redact sensitive content, and remove the background from an image entirely on-device
   5. User can undo and redo any action, access all common operations via keyboard shortcuts, and view a shortcut reference list
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 02-01-PLAN.md — Canvas store (Zustand+zundo), Konva Stage, BackgroundLayer, ScreenshotLayer with snap guides and fan layout, tool panels (background, style, aspect ratio)
+- [ ] 02-02-PLAN.md — AnnotationLayer with five shape types and Transformer, privacy tools (blur/pixelate regions via Rust IPC + live Konva preview), crop overlay, flip, background removal Web Worker
+- [ ] 02-03-PLAN.md — Unified keyboard shortcut binding (tinykeys), SHORTCUT_REGISTRY, shortcut reference modal
 **UI hint**: yes
 
 ### Phase 3: Export, Presets, and CLI
@@ -62,6 +69,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation and Capture | 0/TBD | Not started | - |
-| 2. Canvas Editor and Beautification | 0/TBD | Not started | - |
+| 1. Foundation and Capture | 0/2 | In progress | - |
+| 2. Canvas Editor and Beautification | 0/3 | Not started | - |
 | 3. Export, Presets, and CLI | 0/TBD | Not started | - |
