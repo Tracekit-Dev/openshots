@@ -291,7 +291,7 @@
   <section class="screenshot">
     <div class="container">
       <div class="screenshot-frame">
-        <div class="screenshot-placeholder">App screenshot will be added here</div>
+        <img src="screenshot.png" alt="OpenShots app screenshot" loading="lazy">
       </div>
     </div>
   </section>
@@ -356,8 +356,12 @@
         </div>
       </div>
       <p style="margin-top: 24px; font-size: 13px; color: var(--text-dim);">
-        Downloads will be available after the first release.
-        <a href="https://github.com/terdia/openshots/releases">Check releases</a>
+        <a href="https://github.com/terdia/openshots/releases">Download from GitHub Releases</a>
+      </p>
+      <p style="margin-top: 12px; font-size: 12px; color: var(--text-dim); max-width: 480px; margin-left: auto; margin-right: auto;">
+        <strong>macOS note:</strong> The app is not code-signed yet. If you see "OpenShots is damaged", run
+        <code style="background: var(--surface); padding: 2px 6px; border-radius: 4px;">xattr -cr /Applications/OpenShots.app</code>
+        in Terminal, then open normally.
       </p>
     </div>
   </section>

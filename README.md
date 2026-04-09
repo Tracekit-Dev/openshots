@@ -43,7 +43,11 @@ Download the latest release for your platform:
 | Linux (AppImage) | [.AppImage](#) |
 | Linux (deb) | [.deb](#) |
 
-> Download links will be available once the first release is published.
+> **macOS users:** The app is not code-signed yet. After downloading, if you see "OpenShots is damaged", run this in Terminal:
+> ```bash
+> xattr -cr /Applications/OpenShots.app
+> ```
+> Then open the app normally. This removes the macOS quarantine flag.
 
 ## Build from source
 
