@@ -53,56 +53,61 @@ export default function ScreenshotNode({ data, isSelected }: ScreenshotNodeProps
   };
 
   const bw = data.insetBorder.enabled ? data.insetBorder.width : 0;
+  const totalW = data.width + bw * 2;
+  const totalH = data.height + bw * 2;
 
   return (
     <>
+      {/* Shadow — rendered as a separate group OUTSIDE the main group
+          so it isn't clipped or affected by the image group structure */}
+      {data.shadow.enabled && (
+        <Rect
+          x={data.x - totalW / 2 + bw}
+          y={data.y - totalH / 2 + bw}
+          width={data.width}
+          height={data.height}
+          cornerRadius={data.cornerRadius}
+          fill="#000"
+          opacity={0}
+          shadowEnabled
+          shadowColor={data.shadow.color}
+          shadowBlur={data.shadow.blur}
+          shadowOffsetX={data.shadow.offsetX}
+          shadowOffsetY={data.shadow.offsetY}
+          shadowOpacity={1}
+          listening={false}
+        />
+      )}
+
       <Group
         ref={groupRef}
         x={data.x}
         y={data.y}
-        width={data.width + bw * 2}
-        height={data.height + bw * 2}
+        width={totalW}
+        height={totalH}
         rotation={data.rotation}
-        offsetX={(data.width + bw * 2) / 2}
-        offsetY={(data.height + bw * 2) / 2}
+        offsetX={totalW / 2}
+        offsetY={totalH / 2}
         draggable
         onClick={() => setSelectedId(data.id)}
         onTap={() => setSelectedId(data.id)}
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
       >
-        {/* Shadow rect — rendered outside clip so shadow is visible */}
-        {data.shadow.enabled && (
-          <Rect
-            x={bw}
-            y={bw}
-            width={data.width}
-            height={data.height}
-            cornerRadius={data.cornerRadius}
-            fill="transparent"
-            shadowEnabled
-            shadowColor={data.shadow.color}
-            shadowBlur={data.shadow.blur}
-            shadowOffsetX={data.shadow.offsetX}
-            shadowOffsetY={data.shadow.offsetY}
-            listening={false}
-          />
-        )}
-
-        {/* Inset border — rendered as a larger rounded rect behind the image */}
+        {/* Inset border — larger rounded rect behind the image */}
         {data.insetBorder.enabled && (
           <Rect
             x={0}
             y={0}
-            width={data.width + bw * 2}
-            height={data.height + bw * 2}
+            width={totalW}
+            height={totalH}
             cornerRadius={data.cornerRadius + bw}
             fill={data.insetBorder.color}
             listening={false}
           />
         )}
 
-        {/* Clipped image group */}
+        {/* Clipped image */}
         <Group
           x={bw}
           y={bw}

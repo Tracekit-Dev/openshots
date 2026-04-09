@@ -30,8 +30,28 @@ function addImageFromUrl(url: string) {
   img.src = url;
   img.onload = () => {
     console.log("[Screenshots] Image loaded:", img.naturalWidth, "x", img.naturalHeight);
-    const { canvasWidth, canvasHeight, addImage } = useCanvasStore.getState();
-    const maxDim = Math.min(canvasWidth, canvasHeight) * 0.6;
+    const store = useCanvasStore.getState();
+    const { canvasWidth, canvasHeight, images, addImage, setCanvasSize } = store;
+
+    // Auto-adapt canvas to match image aspect ratio when first image is added
+    if (images.length === 0) {
+      const imgRatio = img.naturalWidth / img.naturalHeight;
+      // Keep the larger canvas dimension, adjust the other to match image ratio
+      let newW = canvasWidth;
+      let newH = canvasHeight;
+      if (imgRatio > 1) {
+        // Landscape image: keep width, adjust height
+        newH = Math.round(canvasWidth / imgRatio);
+      } else {
+        // Portrait/square: keep height, adjust width
+        newW = Math.round(canvasHeight * imgRatio);
+      }
+      setCanvasSize(newW, newH);
+    }
+
+    const cw = useCanvasStore.getState().canvasWidth;
+    const ch = useCanvasStore.getState().canvasHeight;
+    const maxDim = Math.min(cw, ch) * 0.6;
     let w = img.naturalWidth;
     let h = img.naturalHeight;
     if (w > maxDim || h > maxDim) {
@@ -43,8 +63,8 @@ function addImageFromUrl(url: string) {
     const newImage: CanvasImage = {
       id: crypto.randomUUID(),
       src: url,
-      x: canvasWidth / 2,
-      y: canvasHeight / 2,
+      x: cw / 2,
+      y: ch / 2,
       width: w,
       height: h,
       rotation: 0,

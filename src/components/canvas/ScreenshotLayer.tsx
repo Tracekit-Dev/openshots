@@ -4,7 +4,8 @@ import ScreenshotNode from "./nodes/ScreenshotNode";
 
 /**
  * Renders all screenshot images on the canvas.
- * Computes effective position/size based on padding.
+ * At padding=0, image covers the canvas (may crop edges if aspect ratios differ).
+ * As padding increases, image fits within the padded area (contain mode).
  */
 export default function ScreenshotLayer() {
   const images = useCanvasStore((s) => s.images);
@@ -13,15 +14,19 @@ export default function ScreenshotLayer() {
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
 
-  // Available area after padding
   const availW = Math.max(canvasWidth - padding * 2, 100);
   const availH = Math.max(canvasHeight - padding * 2, 100);
 
   return (
     <Layer>
       {images.map((img) => {
-        // Scale image to fit within padded area — no cap at 1 so padding always constrains
-        const scale = Math.min(availW / img.width, availH / img.height);
+        const scaleW = availW / img.width;
+        const scaleH = availH / img.height;
+
+        // Contain mode: fit image within available area, preserving aspect ratio.
+        // Background fills any gaps when aspect ratios don't match.
+        const scale = Math.min(scaleW, scaleH);
+
         const displayW = Math.round(img.width * scale);
         const displayH = Math.round(img.height * scale);
 

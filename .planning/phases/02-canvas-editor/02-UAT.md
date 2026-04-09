@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 02-canvas-editor
 source: 02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md
 started: 2026-04-09T16:00:00Z
