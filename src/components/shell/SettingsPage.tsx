@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useAppStore, DEFAULT_HOTKEYS } from "../../stores/app.store";
 
 export default function SettingsPage({ onBack }: { onBack: () => void }) {
@@ -142,7 +143,7 @@ export default function SettingsPage({ onBack }: { onBack: () => void }) {
             <div className="p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-zinc-400">Version</span>
-                <span className="text-[13px] text-zinc-200">0.1.0</span>
+                <span className="text-[13px] text-zinc-200">1.0.1</span>
               </div>
               <div className="h-px bg-zinc-800/40" />
               <div className="flex items-center justify-between">
@@ -152,26 +153,32 @@ export default function SettingsPage({ onBack }: { onBack: () => void }) {
               <div className="h-px bg-zinc-800/40" />
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-zinc-400">Built by</span>
-                <a
-                  href="https://github.com/Tracekit-Dev"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[13px] text-zinc-200 hover:text-white transition-colors"
+                <button
+                  onClick={() => void openUrl("https://www.tracekit.dev")}
+                  className="text-[13px] text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
                 >
                   TraceKit
-                </a>
+                </button>
               </div>
               <div className="h-px bg-zinc-800/40" />
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-zinc-400">Community</span>
-                <a
-                  href="https://discord.gg/huSuJ94k"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[13px] text-zinc-200 hover:text-white transition-colors"
+                <button
+                  onClick={() => void openUrl("https://discord.gg/huSuJ94k")}
+                  className="text-[13px] text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
                 >
                   Discord
-                </a>
+                </button>
+              </div>
+              <div className="h-px bg-zinc-800/40" />
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-zinc-400">Source</span>
+                <button
+                  onClick={() => void openUrl("https://github.com/Tracekit-Dev/openshots")}
+                  className="text-[13px] text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
+                >
+                  GitHub
+                </button>
               </div>
             </div>
           </div>

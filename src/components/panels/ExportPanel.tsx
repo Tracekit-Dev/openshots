@@ -22,8 +22,12 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
 
     setExporting(true);
     try {
+      // Compensate for the zoom scale so export is always at logical canvas dimensions
+      const currentZoomScale = stage.scaleX();
+      const exportPixelRatio = scale / currentZoomScale;
+
       const dataUrl = stage.toDataURL({
-        pixelRatio: scale,
+        pixelRatio: exportPixelRatio,
         mimeType: format === "png" ? "image/png" : "image/jpeg",
         quality: quality / 100,
       });
@@ -32,17 +36,20 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
       img.src = dataUrl;
       await new Promise<void>((resolve) => { img.onload = () => resolve(); });
 
+      // Draw at the correct logical output dimensions
+      const outW = canvasWidth * scale;
+      const outH = canvasHeight * scale;
       const canvas = document.createElement("canvas");
-      canvas.width = canvasWidth * scale;
-      canvas.height = canvasHeight * scale;
+      canvas.width = outW;
+      canvas.height = outH;
       const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, outW, outH);
+      const imageData = ctx.getImageData(0, 0, outW, outH);
 
       const result = await exportCanvas(
         new Uint8Array(imageData.data.buffer),
-        canvas.width,
-        canvas.height,
+        outW,
+        outH,
         { format, quality, scale: 1 },
       );
 

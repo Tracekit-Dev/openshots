@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import Konva from "konva";
 import { useAppStore } from "./stores/app.store";
 import { useCanvasStore, type CanvasImage } from "./stores/canvas.store";
@@ -144,6 +146,31 @@ export default function App() {
     };
   }, []);
 
+  // Tauri native file drop — use ref to prevent StrictMode double-registration
+  const dropRegistered = useRef(false);
+  useEffect(() => {
+    if (dropRegistered.current) return;
+    dropRegistered.current = true;
+    let unlisten: (() => void) | undefined;
+    getCurrentWebview()
+      .onDragDropEvent(async (event) => {
+        if (event.payload.type === "drop") {
+          for (const filePath of event.payload.paths) {
+            const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+            if (!["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) continue;
+            try {
+              const dataUrl = await readImageFile(filePath);
+              addImageFromUrl(dataUrl);
+            } catch (err) {
+              console.error("[DragDrop] Failed:", err);
+            }
+          }
+        }
+      })
+      .then((fn) => { unlisten = fn; });
+    return () => { unlisten?.(); };
+  }, []);
+
   // When a capture completes, add it to the canvas
   useEffect(() => {
     if (captureState === "captured" && lastCapturePath) {
@@ -230,6 +257,13 @@ export default function App() {
             Capturing...
           </span>
         )}
+
+        <button
+          onClick={() => void openUrl("https://www.tracekit.dev")}
+          className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors mr-1"
+        >
+          by TraceKit
+        </button>
 
         <button
           onClick={() => setShowShortcuts(true)}

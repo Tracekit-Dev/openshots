@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useToolStore, type ToolMode, COLOR_PRESETS } from "../../stores/tool.store";
+import { useCanvasStore } from "../../stores/canvas.store";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 
@@ -20,6 +21,9 @@ export default function ToolPanel() {
   const strokeColor = useToolStore((s) => s.strokeColor);
   const setStrokeColor = useToolStore((s) => s.setStrokeColor);
   const setSelectedEmoji = useToolStore((s) => s.setSelectedEmoji);
+  const selectedId = useCanvasStore((s) => s.selectedId);
+  const annotations = useCanvasStore((s) => s.annotations);
+  const updateAnnotation = useCanvasStore((s) => s.updateAnnotation);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +50,30 @@ export default function ToolPanel() {
     setSelectedEmoji(emoji.native);
     setShowEmojiPicker(false);
     setActiveTool("emoji");
+  };
+
+  const handleColorClick = (color: string) => {
+    setStrokeColor(color);
+    // Also update the currently selected annotation's color
+    if (selectedId) {
+      const ann = annotations.find((a) => a.id === selectedId);
+      if (ann) {
+        switch (ann.type) {
+          case "arrow":
+            updateAnnotation(ann.id, { stroke: color });
+            break;
+          case "rectangle":
+            updateAnnotation(ann.id, { stroke: color, fill: `${color}14` });
+            break;
+          case "ellipse":
+            updateAnnotation(ann.id, { stroke: color, fill: `${color}14` });
+            break;
+          case "text":
+            updateAnnotation(ann.id, { fill: color });
+            break;
+        }
+      }
+    }
   };
 
   return (
@@ -98,7 +126,7 @@ export default function ToolPanel() {
           {COLOR_PRESETS.map((color) => (
             <button
               key={color}
-              onClick={() => setStrokeColor(color)}
+              onClick={() => handleColorClick(color)}
               className={`w-6 h-6 rounded-md border transition-all ${
                 strokeColor === color
                   ? "border-white scale-110"

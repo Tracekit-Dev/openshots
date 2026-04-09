@@ -102,6 +102,8 @@ export interface PrivacyRegion {
   width: number;
   height: number;
   intensity: number;
+  opacity: number; // 0-1
+  fill: string;
 }
 
 export interface CanvasBackground {

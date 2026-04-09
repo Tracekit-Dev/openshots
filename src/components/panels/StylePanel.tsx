@@ -10,8 +10,11 @@ export default function StylePanel() {
   const setPadding = useCanvasStore((s) => s.setPadding);
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
+  const privacyRegions = useCanvasStore((s) => s.privacyRegions);
+  const updatePrivacyRegion = useCanvasStore((s) => s.updatePrivacyRegion);
 
   const selected = images.find((img) => img.id === selectedId);
+  const selectedPrivacy = privacyRegions.find((r) => r.id === selectedId);
 
   const handleFanLayout = () => {
     const positions = computeFanLayout(images.length, canvasWidth, canvasHeight);
@@ -198,6 +201,72 @@ export default function StylePanel() {
             >
               Flip V
             </button>
+          </div>
+        </>
+      )}
+
+      {/* Privacy region controls */}
+      {selectedPrivacy && (
+        <>
+          <div className="border-t border-zinc-800/60 pt-3 mt-3">
+            <p className="text-[11px] text-zinc-500 mb-2">
+              {selectedPrivacy.type === "blur" ? "Blur" : "Pixelate"} Region
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] text-zinc-500 w-14">Intensity</label>
+            <input
+              type="range"
+              min={1}
+              max={selectedPrivacy.type === "blur" ? 40 : 32}
+              value={selectedPrivacy.intensity}
+              onChange={(e) =>
+                updatePrivacyRegion(selectedPrivacy.id, {
+                  intensity: Number(e.target.value),
+                })
+              }
+              className="flex-1 accent-zinc-400"
+            />
+            <span className="text-[11px] text-zinc-500 w-7 text-right">
+              {selectedPrivacy.intensity}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] text-zinc-500 w-14">Opacity</label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round((selectedPrivacy.opacity ?? 1) * 100)}
+              onChange={(e) =>
+                updatePrivacyRegion(selectedPrivacy.id, {
+                  opacity: Number(e.target.value) / 100,
+                })
+              }
+              className="flex-1 accent-zinc-400"
+            />
+            <span className="text-[11px] text-zinc-500 w-7 text-right">
+              {Math.round((selectedPrivacy.opacity ?? 1) * 100)}%
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] text-zinc-500 w-14">Color</label>
+            <input
+              type="color"
+              value={selectedPrivacy.fill || (selectedPrivacy.type === "blur" ? "#d4d4d4" : "#a3a3a3")}
+              onChange={(e) =>
+                updatePrivacyRegion(selectedPrivacy.id, {
+                  fill: e.target.value,
+                })
+              }
+              className="w-8 h-8 rounded-md border border-zinc-700 bg-transparent cursor-pointer"
+            />
+            <span className="text-[11px] text-zinc-500">
+              {selectedPrivacy.fill || "default"}
+            </span>
           </div>
         </>
       )}

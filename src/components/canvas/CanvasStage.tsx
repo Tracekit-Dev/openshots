@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Stage } from "react-konva";
 import Konva from "konva";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { useCanvasStore, type CanvasImage } from "../../stores/canvas.store";
+import { useCanvasStore } from "../../stores/canvas.store";
 import { useToolStore } from "../../stores/tool.store";
 import BackgroundLayer from "./BackgroundLayer";
 import ScreenshotLayer from "./ScreenshotLayer";
@@ -101,73 +99,7 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [undo, redo]);
 
-  // Tauri native file drop handler
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-
-    getCurrentWebview()
-      .onDragDropEvent(async (event) => {
-        if (event.payload.type === "drop") {
-          const paths = event.payload.paths;
-          for (const filePath of paths) {
-            const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
-            if (!["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) continue;
-
-            const url = convertFileSrc(filePath);
-            const img = new window.Image();
-            img.src = url;
-            await new Promise<void>((resolve) => {
-              img.onload = () => resolve();
-              img.onerror = () => resolve();
-            });
-            if (!img.naturalWidth) continue;
-
-            const { canvasWidth: cw, canvasHeight: ch } = useCanvasStore.getState();
-            const maxDim = Math.min(cw, ch) * 0.6;
-            let w = img.naturalWidth;
-            let h = img.naturalHeight;
-            if (w > maxDim || h > maxDim) {
-              const ratio = Math.min(maxDim / w, maxDim / h);
-              w = Math.round(w * ratio);
-              h = Math.round(h * ratio);
-            }
-
-            const newImage: CanvasImage = {
-              id: crypto.randomUUID(),
-              src: url,
-              x: cw / 2,
-              y: ch / 2,
-              width: w,
-              height: h,
-              rotation: 0,
-              cornerRadius: 12,
-              flipX: false,
-              flipY: false,
-              shadow: {
-                enabled: true,
-                color: "rgba(0,0,0,0.3)",
-                blur: 20,
-                offsetX: 0,
-                offsetY: 10,
-              },
-              insetBorder: {
-                enabled: false,
-                color: "#ffffff",
-                width: 8,
-              },
-            };
-            useCanvasStore.getState().addImage(newImage);
-          }
-        }
-      })
-      .then((fn) => {
-        unlisten = fn;
-      });
-
-    return () => {
-      unlisten?.();
-    };
-  }, []);
+  // Drag-and-drop is handled in App.tsx (always mounted)
 
   // Arrow drag-to-draw: mouse move
   const handleStageMouseMove = useCallback(
@@ -201,108 +133,112 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      if (e.target === e.target.getStage()) {
-        if (activeTool === "select") {
+      // For select tool, only deselect when clicking empty canvas
+      if (activeTool === "select") {
+        if (e.target === e.target.getStage()) {
           setSelectedId(null);
-          return;
         }
+        return;
+      }
 
-        const pos = e.target.getStage()?.getPointerPosition();
-        if (!pos) return;
-        const x = pos.x / scale;
-        const y = pos.y / scale;
-        const id = crypto.randomUUID();
+      // For drawing tools, allow placement anywhere on the canvas
+      const stage = e.target.getStage();
+      const pos = stage?.getPointerPosition();
+      if (!pos) return;
+      const x = pos.x / scale;
+      const y = pos.y / scale;
+      const id = crypto.randomUUID();
 
-        switch (activeTool) {
-          case "rectangle":
-            addAnnotation({
-              id,
-              type: "rectangle",
-              x,
-              y,
-              width: 120,
-              height: 80,
-              rotation: 0,
-              fill: `${strokeColor}14`,
-              stroke: strokeColor,
-              strokeWidth,
-              cornerRadius: 8,
-            });
-            setActiveTool("select");
-            break;
-          case "ellipse":
-            addAnnotation({
-              id,
-              type: "ellipse",
-              x,
-              y,
-              radiusX: 60,
-              radiusY: 40,
-              rotation: 0,
-              fill: `${strokeColor}14`,
-              stroke: strokeColor,
-              strokeWidth,
-            });
-            setActiveTool("select");
-            break;
-          case "arrow":
-            // Start drag-to-draw
-            addAnnotation({
-              id,
-              type: "arrow",
-              x,
-              y,
-              points: [0, 0, 0, 0],
-              rotation: 0,
-              stroke: strokeColor,
-              strokeWidth,
-              curvature: 0,
-            });
-            setDrawingArrowId(id);
-            break;
-          case "text":
-            addAnnotation({
-              id,
-              type: "text",
-              x,
-              y,
-              text: "Text",
-              fontSize,
-              fontFamily: "Inter, system-ui, sans-serif",
-              fill: "#1A1A1A",
-              rotation: 0,
-              shadowEnabled: true,
-              shadowColor: "rgba(255,255,255,0.8)",
-              shadowBlur: 4,
-            });
-            setActiveTool("select");
-            break;
-          case "emoji":
-            addAnnotation({
-              id,
-              type: "emoji",
-              x,
-              y,
-              emoji: selectedEmoji,
-              fontSize: 48,
-              rotation: 0,
-            });
-            setActiveTool("select");
-            break;
-          case "blur":
-          case "pixelate":
-            addPrivacyRegion({
-              id,
-              type: activeTool,
-              x: x - 50,
-              y: y - 30,
-              width: 100,
-              height: 60,
-              intensity: activeTool === "blur" ? 10 : 8,
-            });
-            setActiveTool("select");
-            break;
-        }
+      switch (activeTool) {
+        case "rectangle":
+          addAnnotation({
+            id,
+            type: "rectangle",
+            x,
+            y,
+            width: 120,
+            height: 80,
+            rotation: 0,
+            fill: `${strokeColor}14`,
+            stroke: strokeColor,
+            strokeWidth,
+            cornerRadius: 8,
+          });
+          setActiveTool("select");
+          break;
+        case "ellipse":
+          addAnnotation({
+            id,
+            type: "ellipse",
+            x,
+            y,
+            radiusX: 60,
+            radiusY: 40,
+            rotation: 0,
+            fill: `${strokeColor}14`,
+            stroke: strokeColor,
+            strokeWidth,
+          });
+          setActiveTool("select");
+          break;
+        case "arrow":
+          addAnnotation({
+            id,
+            type: "arrow",
+            x,
+            y,
+            points: [0, 0, 0, 0],
+            rotation: 0,
+            stroke: strokeColor,
+            strokeWidth,
+            curvature: 0,
+          });
+          setDrawingArrowId(id);
+          break;
+        case "text":
+          addAnnotation({
+            id,
+            type: "text",
+            x,
+            y,
+            text: "Text",
+            fontSize,
+            fontFamily: "Inter, system-ui, sans-serif",
+            fill: strokeColor,
+            rotation: 0,
+            shadowEnabled: true,
+            shadowColor: "rgba(255,255,255,0.8)",
+            shadowBlur: 4,
+          });
+          setActiveTool("select");
+          break;
+        case "emoji":
+          addAnnotation({
+            id,
+            type: "emoji",
+            x,
+            y,
+            emoji: selectedEmoji,
+            fontSize: 48,
+            rotation: 0,
+          });
+          setActiveTool("select");
+          break;
+        case "blur":
+        case "pixelate":
+          addPrivacyRegion({
+            id,
+            type: activeTool,
+            x: x - 50,
+            y: y - 30,
+            width: 100,
+            height: 60,
+            intensity: activeTool === "blur" ? 10 : 8,
+            opacity: 0.7,
+            fill: activeTool === "blur" ? "#d4d4d4" : "#a3a3a3",
+          });
+          setActiveTool("select");
+          break;
       }
     },
     [

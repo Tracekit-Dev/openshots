@@ -54,7 +54,7 @@ export const useToolStore = create<ToolState>()((set) => ({
   setFillColor: (color) => set({ fillColor: color }),
   strokeWidth: 4,
   setStrokeWidth: (width) => set({ strokeWidth: width }),
-  fontSize: 28,
+  fontSize: 48,
   setFontSize: (size) => set({ fontSize: size }),
 
   selectedEmoji: "\u{1F44D}",
