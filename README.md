@@ -4,6 +4,8 @@ Turn raw screenshots into polished, shareable visuals in seconds. Free, open-sou
 
 OpenShots is a cross-platform desktop app built with Tauri (Rust + React). Capture screenshots, add beautiful backgrounds, annotate with shapes and text, blur sensitive areas, and export — all without leaving the app or sending data anywhere.
 
+**Built by the [TraceKit](https://github.com/Tracekit-Dev) team** — the makers of TraceKit APM.
+
 ## Features
 
 **Capture**
@@ -37,11 +39,11 @@ Download the latest release for your platform:
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [.dmg](https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_aarch64.dmg) |
-| macOS (Intel) | [.dmg](https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_x64.dmg) |
-| Windows | [.msi](https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_x64_en-US.msi) |
-| Linux (AppImage) | [.AppImage](https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_amd64.AppImage) |
-| Linux (deb) | [.deb](https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_amd64.deb) |
+| macOS (Apple Silicon) | [.dmg](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_0.1.0_aarch64.dmg) |
+| macOS (Intel) | [.dmg](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_0.1.0_x64.dmg) |
+| Windows | [.msi](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_0.1.0_x64_en-US.msi) |
+| Linux (AppImage) | [.AppImage](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_0.1.0_amd64.AppImage) |
+| Linux (deb) | [.deb](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_0.1.0_amd64.deb) |
 
 The macOS builds are code-signed and notarized with an Apple Developer ID certificate.
 
@@ -54,7 +56,7 @@ The macOS builds are code-signed and notarized with an Apple Developer ID certif
 
 ```bash
 # Clone the repo
-git clone https://github.com/terryosayawe/openshots.git
+git clone https://github.com/Tracekit-Dev/openshots.git
 cd openshots
 
 # Install dependencies
@@ -103,4 +105,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 
-[MIT](LICENSE)
+[FSL-1.1-MIT](LICENSE) — source available now, converts to MIT on 2030-04-09.
+
+---
+
+<p align="center">
+  Built by <a href="https://github.com/Tracekit-Dev">TraceKit</a>
+</p>

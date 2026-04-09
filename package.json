@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri"
   },
-  "license": "MIT",
+  "license": "FSL-1.1-MIT",
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@tauri-apps/api": "^2.10.1",

@@ -14,7 +14,7 @@ Thanks for your interest in contributing! OpenShots is a Tauri 2.x desktop app w
 ### Getting Started
 
 ```bash
-git clone https://github.com/terryosayawe/openshots.git
+git clone https://github.com/Tracekit-Dev/openshots.git
 cd openshots
 npm install
 npx tauri dev

@@ -133,6 +133,36 @@ export default function SettingsPage({ onBack }: { onBack: () => void }) {
               <span className="text-[12px] text-emerald-400">Saved</span>
             )}
           </div>
+
+          {/* About */}
+          <div className="mt-10 rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-zinc-800/40">
+              <h2 className="text-[13px] font-medium text-zinc-300">About</h2>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-zinc-400">Version</span>
+                <span className="text-[13px] text-zinc-200">0.1.0</span>
+              </div>
+              <div className="h-px bg-zinc-800/40" />
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-zinc-400">License</span>
+                <span className="text-[13px] text-zinc-200">FSL-1.1-MIT</span>
+              </div>
+              <div className="h-px bg-zinc-800/40" />
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-zinc-400">Built by</span>
+                <a
+                  href="https://github.com/Tracekit-Dev"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[13px] text-zinc-200 hover:text-white transition-colors"
+                >
+                  TraceKit
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
