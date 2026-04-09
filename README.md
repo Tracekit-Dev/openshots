@@ -99,6 +99,10 @@ npx tauri build
 | Reset zoom | `Cmd+0` | `Ctrl+0` |
 | Tools | `V` `A` `R` `E` `T` `M` `B` `P` | Same |
 
+## Community
+
+Join the [TraceKit Discord](https://discord.gg/huSuJ94k) for questions, feedback, and discussion.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.

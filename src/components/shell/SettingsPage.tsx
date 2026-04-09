@@ -161,6 +161,18 @@ export default function SettingsPage({ onBack }: { onBack: () => void }) {
                   TraceKit
                 </a>
               </div>
+              <div className="h-px bg-zinc-800/40" />
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-zinc-400">Community</span>
+                <a
+                  href="https://discord.gg/huSuJ94k"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[13px] text-zinc-200 hover:text-white transition-colors"
+                >
+                  Discord
+                </a>
+              </div>
             </div>
           </div>
         </div>
