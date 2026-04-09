@@ -339,29 +339,29 @@
       <h2>Download OpenShots</h2>
       <p>Available for macOS, Windows, and Linux. Always free.</p>
       <div class="download-grid" id="download-grid">
-        <div class="download-card">
+        <a href="https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_aarch64.dmg" class="download-card">
           <div class="os-icon">&#x1F34E;</div>
-          <div class="os-name">macOS</div>
-          <div class="os-detail">Apple Silicon & Intel</div>
-        </div>
-        <div class="download-card">
+          <div class="os-name">macOS (Apple Silicon)</div>
+          <div class="os-detail">.dmg — M1/M2/M3/M4</div>
+        </a>
+        <a href="https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_x64.dmg" class="download-card">
+          <div class="os-icon">&#x1F34E;</div>
+          <div class="os-name">macOS (Intel)</div>
+          <div class="os-detail">.dmg — x64</div>
+        </a>
+        <a href="https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_x64_en-US.msi" class="download-card">
           <div class="os-icon">&#x1FA9F;</div>
           <div class="os-name">Windows</div>
           <div class="os-detail">.msi installer</div>
-        </div>
-        <div class="download-card">
+        </a>
+        <a href="https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_amd64.AppImage" class="download-card">
           <div class="os-icon">&#x1F427;</div>
           <div class="os-name">Linux</div>
-          <div class="os-detail">AppImage & .deb</div>
-        </div>
+          <div class="os-detail">.AppImage</div>
+        </a>
       </div>
       <p style="margin-top: 24px; font-size: 13px; color: var(--text-dim);">
-        <a href="https://github.com/terdia/openshots/releases">Download from GitHub Releases</a>
-      </p>
-      <p style="margin-top: 12px; font-size: 12px; color: var(--text-dim); max-width: 480px; margin-left: auto; margin-right: auto;">
-        <strong>macOS note:</strong> The app is not code-signed yet. If you see "OpenShots is damaged", run
-        <code style="background: var(--surface); padding: 2px 6px; border-radius: 4px;">xattr -cr /Applications/OpenShots.app</code>
-        in Terminal, then open normally.
+        Code-signed and notarized. <a href="https://github.com/terdia/openshots/releases">All releases</a>
       </p>
     </div>
   </section>
@@ -378,8 +378,8 @@
     const ua = navigator.userAgent;
     let activeOS = null;
     if (ua.includes('Mac')) activeOS = 0;
-    else if (ua.includes('Win')) activeOS = 1;
-    else if (ua.includes('Linux')) activeOS = 2;
+    else if (ua.includes('Win')) activeOS = 2;
+    else if (ua.includes('Linux')) activeOS = 3;
 
     if (activeOS !== null) {
       const cards = document.querySelectorAll('.download-card');

@@ -37,17 +37,13 @@ Download the latest release for your platform:
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [.dmg](#) |
-| macOS (Intel) | [.dmg](#) |
-| Windows | [.msi](#) |
-| Linux (AppImage) | [.AppImage](#) |
-| Linux (deb) | [.deb](#) |
+| macOS (Apple Silicon) | [.dmg](https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_aarch64.dmg) |
+| macOS (Intel) | [.dmg](https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_x64.dmg) |
+| Windows | [.msi](https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_x64_en-US.msi) |
+| Linux (AppImage) | [.AppImage](https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_amd64.AppImage) |
+| Linux (deb) | [.deb](https://github.com/terdia/openshots/releases/latest/download/OpenShots_0.1.0_amd64.deb) |
 
-> **macOS users:** The app is not code-signed yet. After downloading, if you see "OpenShots is damaged", run this in Terminal:
-> ```bash
-> xattr -cr /Applications/OpenShots.app
-> ```
-> Then open the app normally. This removes the macOS quarantine flag.
+The macOS builds are code-signed and notarized with an Apple Developer ID certificate.
 
 ## Build from source
 
