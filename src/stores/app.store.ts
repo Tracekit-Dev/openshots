@@ -32,6 +32,9 @@ interface AppState {
 
   lastCapturePath: string | null;
   setLastCapturePath: (path: string | null) => void;
+
+  regionScreenshotPath: string | null;
+  setRegionScreenshotPath: (path: string | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -48,6 +51,9 @@ export const useAppStore = create<AppState>()(
 
       lastCapturePath: null,
       setLastCapturePath: (path) => set({ lastCapturePath: path }),
+
+      regionScreenshotPath: null,
+      setRegionScreenshotPath: (path) => set({ regionScreenshotPath: path }),
     }),
     {
       name: "app-store",

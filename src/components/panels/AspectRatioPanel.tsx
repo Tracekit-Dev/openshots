@@ -10,7 +10,7 @@ export default function AspectRatioPanel() {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+      <h3 className="text-[11px] font-medium text-zinc-500 tracking-wide">
         Canvas Size
       </h3>
       <div className="grid grid-cols-3 gap-1">
@@ -21,10 +21,10 @@ export default function AspectRatioPanel() {
             <button
               key={preset.label}
               onClick={() => setCanvasSize(size.width, size.height)}
-              className={`px-2 py-1.5 text-xs rounded-lg transition-colors ${
+              className={`px-2 py-1.5 text-[13px] rounded-md transition-colors ${
                 isActive
-                  ? "bg-indigo-600 text-white"
-                  : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+                  ? "bg-zinc-100 text-zinc-900"
+                  : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
               }`}
             >
               {preset.label}
@@ -32,8 +32,8 @@ export default function AspectRatioPanel() {
           );
         })}
       </div>
-      <p className="text-[10px] text-neutral-600">
-        {canvasWidth} x {canvasHeight}
+      <p className="text-[11px] text-zinc-600">
+        {canvasWidth} × {canvasHeight}
       </p>
     </div>
   );

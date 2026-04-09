@@ -17,7 +17,7 @@ export default function ToolPanel() {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+      <h3 className="text-[11px] font-medium text-zinc-500 tracking-wide">
         Tools
       </h3>
       <div className="grid grid-cols-2 gap-1">
@@ -25,14 +25,14 @@ export default function ToolPanel() {
           <button
             key={mode}
             onClick={() => setActiveTool(mode)}
-            className={`px-2 py-1.5 text-xs rounded-lg flex items-center justify-between transition-colors ${
+            className={`px-2 py-1.5 text-[13px] rounded-md flex items-center justify-between transition-colors ${
               activeTool === mode
-                ? "bg-indigo-600 text-white"
-                : "bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-750"
+                ? "bg-zinc-100 text-zinc-900"
+                : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
             }`}
           >
             <span>{label}</span>
-            <span className="text-[10px] opacity-50">{shortcut}</span>
+            <span className="text-[10px] opacity-40">{shortcut}</span>
           </button>
         ))}
       </div>

@@ -16,26 +16,27 @@ export default function BackgroundLayer() {
   useEffect(() => {
     if (background.type === "image" && background.imageSrc) {
       const img = new window.Image();
-      img.crossOrigin = "anonymous";
       img.src = background.imageSrc;
       img.onload = () => setBgImage(img);
+      img.onerror = () => console.error("[Screenshots] Failed to load background image");
     } else {
       setBgImage(null);
     }
   }, [background.type, background.imageSrc]);
 
-  // Apply blur filter
+  // Apply blur filter and refresh cache when background changes
   useEffect(() => {
     const node = rectRef.current;
     if (!node) return;
+    node.clearCache();
     if (background.blur > 0) {
       node.filters([Konva.Filters.Blur]);
       node.blurRadius(background.blur);
+      node.cache();
     } else {
       node.filters([]);
     }
-    node.cache();
-  }, [background.blur, canvasWidth, canvasHeight]);
+  }, [background]);
 
   const gradientFill = () => {
     const angle = (background.gradientAngle * Math.PI) / 180;

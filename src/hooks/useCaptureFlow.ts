@@ -1,24 +1,40 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { useEffect } from "react";
 import { useAppStore } from "../stores/app.store";
 import {
   captureFullscreen,
-  captureRegion,
   captureWindow,
   checkScreenPermission,
-  type CaptureRegionArgs,
 } from "../ipc/capture";
 
-/**
- * Orchestrates the capture flow: listen for tray/hotkey events,
- * call the appropriate IPC command, and update state with the result.
- */
 export function useCaptureFlow() {
   const setCaptureState = useAppStore((s) => s.setCaptureState);
   const setLastCapturePath = useAppStore((s) => s.setLastCapturePath);
+  const setRegionScreenshotPath = useAppStore(
+    (s) => s.setRegionScreenshotPath,
+  );
 
   const handleFullscreen = useCallback(async () => {
+    setCaptureState("capturing");
+    try {
+      const ok = await checkScreenPermission();
+      console.log("[Screenshots] Screen permission:", ok);
+      if (!ok) {
+        setCaptureState("idle");
+        return;
+      }
+      // Rust hides the window, captures, then shows it again
+      const path = await captureFullscreen();
+      console.log("[Screenshots] Fullscreen capture path:", path);
+      setLastCapturePath(path);
+      setCaptureState("captured");
+    } catch (err) {
+      console.error("[Screenshots] Fullscreen capture failed:", err);
+      setCaptureState("idle");
+    }
+  }, [setCaptureState, setLastCapturePath]);
+
+  const handleRegionStart = useCallback(async () => {
     setCaptureState("capturing");
     try {
       const ok = await checkScreenPermission();
@@ -26,37 +42,20 @@ export function useCaptureFlow() {
         setCaptureState("idle");
         return;
       }
+      // Rust hides the window, captures fullscreen, then shows it again
       const path = await captureFullscreen();
-      setLastCapturePath(path);
-      setCaptureState("captured");
+      setRegionScreenshotPath(path);
+      setCaptureState("selecting-region");
     } catch (err) {
-      console.error("Fullscreen capture failed:", err);
+      console.error("Region capture failed:", err);
       setCaptureState("idle");
     }
-  }, [setCaptureState, setLastCapturePath]);
-
-  const handleRegionStart = useCallback(() => {
-    setCaptureState("selecting-region");
-  }, [setCaptureState]);
-
-  const handleRegionComplete = useCallback(
-    async (args: CaptureRegionArgs) => {
-      setCaptureState("capturing");
-      try {
-        const path = await captureRegion(args);
-        setLastCapturePath(path);
-        setCaptureState("captured");
-      } catch (err) {
-        console.error("Region capture failed:", err);
-        setCaptureState("idle");
-      }
-    },
-    [setCaptureState, setLastCapturePath],
-  );
+  }, [setCaptureState, setRegionScreenshotPath]);
 
   const handleRegionCancel = useCallback(() => {
+    setRegionScreenshotPath(null);
     setCaptureState("idle");
-  }, [setCaptureState]);
+  }, [setCaptureState, setRegionScreenshotPath]);
 
   const handleWindowStart = useCallback(() => {
     setCaptureState("selecting-window");
@@ -86,7 +85,7 @@ export function useCaptureFlow() {
   useEffect(() => {
     const unlisteners = [
       listen("capture:screen", () => void handleFullscreen()),
-      listen("capture:region", () => handleRegionStart()),
+      listen("capture:region", () => void handleRegionStart()),
       listen("capture:window", () => handleWindowStart()),
     ];
 
@@ -98,7 +97,6 @@ export function useCaptureFlow() {
   return {
     handleFullscreen,
     handleRegionStart,
-    handleRegionComplete,
     handleRegionCancel,
     handleWindowStart,
     handleWindowSelect,

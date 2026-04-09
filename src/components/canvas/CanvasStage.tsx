@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Stage } from "react-konva";
 import Konva from "konva";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { useCanvasStore, type CanvasImage } from "../../stores/canvas.store";
 import { useToolStore } from "../../stores/tool.store";
 import BackgroundLayer from "./BackgroundLayer";
@@ -9,13 +8,6 @@ import ScreenshotLayer from "./ScreenshotLayer";
 import AnnotationLayer from "./AnnotationLayer";
 import PrivacyLayer from "./PrivacyLayer";
 
-/**
- * Root Konva Stage. Handles:
- * - DPR-aware sizing via ResizeObserver
- * - File drop to add images
- * - Click-to-deselect on empty area
- * - Annotation drawing on canvas click
- */
 interface CanvasStageProps {
   stageRef: React.RefObject<Konva.Stage | null>;
 }
@@ -23,6 +15,7 @@ interface CanvasStageProps {
 export default function CanvasStage({ stageRef }: CanvasStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
+  const [zoom, setZoom] = useState(1);
 
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
@@ -37,14 +30,14 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   const fontSize = useToolStore((s) => s.fontSize);
   const setActiveTool = useToolStore((s) => s.setActiveTool);
 
-  // Fit canvas into container
-  const scale = Math.min(
+  // Base scale fits canvas to container, zoom multiplies it
+  const baseScale = Math.min(
     containerSize.width / canvasWidth,
     containerSize.height / canvasHeight,
     1,
   );
+  const scale = baseScale * zoom;
 
-  // ResizeObserver for responsive container
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -58,6 +51,33 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
     });
     ro.observe(el);
     return () => ro.disconnect();
+  }, []);
+
+  // Scroll wheel zoom
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        setZoom((z) => Math.min(Math.max(z * delta, 0.25), 4));
+      }
+    };
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, []);
+
+  // Cmd+0 to reset zoom
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "0") {
+        e.preventDefault();
+        setZoom(1);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
   }, []);
 
   // File drop handler
@@ -130,10 +150,8 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
     };
   }, [addImage, canvasWidth, canvasHeight]);
 
-  // Handle stage click for annotation creation or deselection
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      // If clicked on empty canvas area
       if (e.target === e.target.getStage()) {
         if (activeTool === "select") {
           setSelectedId(null);
@@ -215,7 +233,7 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
               type: "emoji",
               x,
               y,
-              emoji: "👍",
+              emoji: "\u{1F44D}",
               fontSize: 48,
               rotation: 0,
             });
@@ -254,13 +272,13 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 flex items-center justify-center overflow-hidden bg-neutral-900"
+      className="flex-1 flex items-center justify-center overflow-hidden bg-zinc-900/50 relative"
     >
       <div
         style={{
           width: canvasWidth * scale,
           height: canvasHeight * scale,
-          boxShadow: "0 0 0 1px rgba(255,255,255,0.05), 0 25px 50px rgba(0,0,0,0.5)",
+          boxShadow: "0 0 0 1px rgba(255,255,255,0.04), 0 20px 40px rgba(0,0,0,0.4)",
           borderRadius: 8,
           overflow: "hidden",
         }}
@@ -280,17 +298,42 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           <AnnotationLayer />
         </Stage>
       </div>
+
+      {/* Zoom controls */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-1.5 py-1 backdrop-blur-sm">
+        <button
+          onClick={() => setZoom((z) => Math.max(z * 0.8, 0.25))}
+          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+        >
+          -
+        </button>
+        <button
+          onClick={() => setZoom(1)}
+          className="px-2 py-0.5 text-[11px] text-zinc-400 hover:text-zinc-100 rounded hover:bg-zinc-800/60 transition-colors min-w-[3rem] text-center"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <button
+          onClick={() => setZoom((z) => Math.min(z * 1.2, 4))}
+          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+        >
+          +
+        </button>
+      </div>
     </div>
   );
 }
 
-/** Add a screenshot from a file path (from capture) to the canvas */
-export function addScreenshotToCanvas(filePath: string) {
-  const src = convertFileSrc(filePath);
+/** Add a screenshot data URL to the canvas */
+export function addScreenshotToCanvas(dataUrl: string) {
+  console.log("[Screenshots] addScreenshotToCanvas, data URL length:", dataUrl.length);
   const img = new window.Image();
-  img.crossOrigin = "anonymous";
-  img.src = src;
+  img.src = dataUrl;
+  img.onerror = (err) => {
+    console.error("[Screenshots] Failed to load screenshot image:", err);
+  };
   img.onload = () => {
+    console.log("[Screenshots] Screenshot loaded:", img.naturalWidth, "x", img.naturalHeight);
     const { canvasWidth, canvasHeight, addImage } = useCanvasStore.getState();
     const maxDim = Math.min(canvasWidth, canvasHeight) * 0.6;
     let w = img.naturalWidth;
@@ -303,7 +346,7 @@ export function addScreenshotToCanvas(filePath: string) {
 
     addImage({
       id: crypto.randomUUID(),
-      src,
+      src: dataUrl,
       x: canvasWidth / 2,
       y: canvasHeight / 2,
       width: w,

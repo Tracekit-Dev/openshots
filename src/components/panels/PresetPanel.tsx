@@ -35,7 +35,6 @@ export default function PresetPanel() {
     store.setPadding(preset.padding);
     store.setBackground(preset.background);
 
-    // Apply style to all images
     store.images.forEach((img) => {
       store.updateImage(img.id, {
         cornerRadius: preset.cornerRadius,
@@ -57,30 +56,29 @@ export default function PresetPanel() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+      <h3 className="text-[11px] font-medium text-zinc-500 tracking-wide">
         Presets
       </h3>
 
       <button
         onClick={handleSave}
-        className="w-full px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
+        className="w-full px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
       >
         Save Current as Preset
       </button>
 
       {presets.length === 0 && (
-        <p className="text-[10px] text-neutral-600">No saved presets</p>
+        <p className="text-[11px] text-zinc-600">No saved presets</p>
       )}
 
       <div className="space-y-1">
         {presets.map((preset) => (
           <div
             key={preset.id}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-neutral-800/50 group"
+            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-zinc-800/40 group"
           >
-            {/* Preset preview swatch */}
             <div
-              className="w-6 h-4 rounded-sm shrink-0"
+              className="w-5 h-4 rounded-sm shrink-0"
               style={{
                 background:
                   preset.background.type === "solid"
@@ -91,16 +89,16 @@ export default function PresetPanel() {
 
             <button
               onClick={() => handleApply(preset)}
-              className="flex-1 text-left text-xs text-neutral-300 hover:text-white truncate"
+              className="flex-1 text-left text-[13px] text-zinc-400 hover:text-zinc-100 truncate transition-colors"
             >
               {preset.name}
             </button>
 
             <button
               onClick={() => removePreset(preset.id)}
-              className="text-neutral-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              className="text-zinc-600 hover:text-red-400 text-[13px] opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              x
+              ×
             </button>
           </div>
         ))}

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CaptureRegionArgs } from "../../ipc/capture";
 
 interface RegionOverlayProps {
-  onComplete: (args: CaptureRegionArgs) => void;
+  screenshotSrc: string;
+  onComplete: (blobUrl: string) => void;
   onCancel: () => void;
 }
 
@@ -14,33 +14,52 @@ interface SelectionRect {
 }
 
 /**
- * Fullscreen transparent overlay for rubber-band region selection.
- * All coordinates are multiplied by devicePixelRatio before being
- * sent to the Rust backend (which operates in physical pixels).
+ * Fullscreen overlay showing a captured screenshot.
+ * User draws a region on it, and the selected area is cropped client-side.
  */
 export default function RegionOverlay({
+  screenshotSrc,
   onComplete,
   onCancel,
 }: RegionOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
   const [selection, setSelection] = useState<SelectionRect | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Load the screenshot image
+  useEffect(() => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.src = screenshotSrc;
+    img.onload = () => {
+      imgRef.current = img;
+      setImageLoaded(true);
+    };
+  }, [screenshotSrc]);
 
   const draw = useCallback(
     (sel: SelectionRect | null) => {
       const canvas = canvasRef.current;
-      if (!canvas) return;
+      const img = imgRef.current;
+      if (!canvas || !img) return;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      canvas.width = vw * dpr;
+      canvas.height = vh * dpr;
       ctx.scale(dpr, dpr);
 
-      // Dark overlay
-      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      // Draw the screenshot scaled to fill the viewport
+      ctx.drawImage(img, 0, 0, vw, vh);
+
+      // Dark overlay on top
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fillRect(0, 0, vw, vh);
 
       if (!sel) return;
 
@@ -51,27 +70,53 @@ export default function RegionOverlay({
 
       if (w === 0 || h === 0) return;
 
-      // Clear selected area
-      ctx.clearRect(x, y, w, h);
+      // Clear selected area to show the screenshot underneath
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, w, h);
+      ctx.clip();
+      ctx.drawImage(img, 0, 0, vw, vh);
+      ctx.restore();
 
       // Border around selection
-      ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(x, y, w, h);
 
       // Dimension label
-      const dprW = Math.round(w * dpr);
-      const dprH = Math.round(h * dpr);
-      const label = `${dprW} x ${dprH}`;
-      ctx.font = "12px system-ui, -apple-system, sans-serif";
-      ctx.fillStyle = "rgba(99, 102, 241, 0.9)";
+      const scaleX = img.naturalWidth / vw;
+      const scaleY = img.naturalHeight / vh;
+      const realW = Math.round(w * scaleX);
+      const realH = Math.round(h * scaleY);
+      const label = `${realW} × ${realH}`;
+      ctx.font = "12px -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
       const metrics = ctx.measureText(label);
       const labelX = x + w / 2 - metrics.width / 2;
-      const labelY = y > 24 ? y - 8 : y + h + 18;
+      const labelY = y > 28 ? y - 8 : y + h + 18;
+
+      // Label background
+      ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+      ctx.beginPath();
+      ctx.roundRect(
+        labelX - 6,
+        labelY - 13,
+        metrics.width + 12,
+        18,
+        4,
+      );
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
       ctx.fillText(label, labelX, labelY);
     },
     [],
   );
+
+  // Initial draw when image loads
+  useEffect(() => {
+    if (imageLoaded) draw(null);
+  }, [imageLoaded, draw]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -101,24 +146,48 @@ export default function RegionOverlay({
   );
 
   const handleMouseUp = useCallback(() => {
-    if (!selection) return;
+    if (!selection || !imgRef.current) return;
     setIsDragging(false);
 
-    const dpr = window.devicePixelRatio || 1;
-    const x = Math.round(Math.min(selection.startX, selection.endX) * dpr);
-    const y = Math.round(Math.min(selection.startY, selection.endY) * dpr);
-    const w = Math.round(Math.abs(selection.endX - selection.startX) * dpr);
-    const h = Math.round(Math.abs(selection.endY - selection.startY) * dpr);
+    const img = imgRef.current;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const x = Math.min(selection.startX, selection.endX);
+    const y = Math.min(selection.startY, selection.endY);
+    const w = Math.abs(selection.endX - selection.startX);
+    const h = Math.abs(selection.endY - selection.startY);
 
     if (w < 4 || h < 4) {
       onCancel();
       return;
     }
 
-    onComplete({ x, y, width: w, height: h });
+    // Map viewport coordinates to image coordinates
+    const scaleX = img.naturalWidth / vw;
+    const scaleY = img.naturalHeight / vh;
+    const cropX = Math.round(x * scaleX);
+    const cropY = Math.round(y * scaleY);
+    const cropW = Math.round(w * scaleX);
+    const cropH = Math.round(h * scaleY);
+
+    // Crop from the original image
+    const cropCanvas = document.createElement("canvas");
+    cropCanvas.width = cropW;
+    cropCanvas.height = cropH;
+    const ctx = cropCanvas.getContext("2d")!;
+    ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+    cropCanvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        onComplete(url);
+      } else {
+        onCancel();
+      }
+    }, "image/png");
   }, [selection, onComplete, onCancel]);
 
-  // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCancel();
@@ -126,11 +195,6 @@ export default function RegionOverlay({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onCancel]);
-
-  // Initial draw
-  useEffect(() => {
-    draw(null);
-  }, [draw]);
 
   return (
     <canvas

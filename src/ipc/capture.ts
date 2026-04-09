@@ -6,29 +6,12 @@ export interface WindowInfo {
   app_name: string;
 }
 
-export interface CaptureRegionArgs {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 /**
  * Capture the primary monitor.
- * Returns an absolute file path to a temp PNG.
- * Use `convertFileSrc(path)` to display in <img>.
+ * Returns a data URL (data:image/png;base64,...).
  */
 export async function captureFullscreen(): Promise<string> {
   return invoke<string>("capture_fullscreen");
-}
-
-/**
- * Capture a selected region.
- * Coordinates must be in PHYSICAL pixels (multiply by window.devicePixelRatio).
- * Returns absolute path to temp PNG.
- */
-export async function captureRegion(args: CaptureRegionArgs): Promise<string> {
-  return invoke<string>("capture_region", { args });
 }
 
 /**
@@ -40,10 +23,18 @@ export async function listWindows(): Promise<WindowInfo[]> {
 
 /**
  * Capture a specific window by ID.
- * Returns absolute path to temp PNG.
+ * Returns a data URL (data:image/png;base64,...).
  */
 export async function captureWindow(windowId: number): Promise<string> {
   return invoke<string>("capture_window", { windowId });
+}
+
+/**
+ * Read a local image file and return it as a data URL.
+ * Used by the upload flow to bypass the asset protocol.
+ */
+export async function readImageFile(path: string): Promise<string> {
+  return invoke<string>("read_image_file", { path });
 }
 
 /**
@@ -52,6 +43,27 @@ export async function captureWindow(windowId: number): Promise<string> {
  */
 export async function checkScreenPermission(): Promise<boolean> {
   return invoke<boolean>("check_screen_permission");
+}
+
+/**
+ * List macOS system wallpaper thumbnails. Returns [name, path] pairs.
+ */
+export async function listSystemWallpapers(): Promise<[string, string][]> {
+  return invoke<[string, string][]>("list_system_wallpapers");
+}
+
+/**
+ * Convert a HEIC file to a small thumbnail data URL.
+ */
+export async function convertHeicThumbnail(path: string): Promise<string> {
+  return invoke<string>("convert_heic_thumbnail", { path });
+}
+
+/**
+ * Convert a HEIC file to full-size JPEG data URL using macOS sips.
+ */
+export async function convertHeicToDataUrl(path: string): Promise<string> {
+  return invoke<string>("convert_heic_to_data_url", { path });
 }
 
 /**

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { open } from "@tauri-apps/plugin-dialog";
 import Konva from "konva";
 import { useAppStore } from "./stores/app.store";
-import { useCanvasStore } from "./stores/canvas.store";
+import { useCanvasStore, type CanvasImage } from "./stores/canvas.store";
 import { useCaptureFlow } from "./hooks/useCaptureFlow";
+import { readImageFile } from "./ipc/capture";
 import RegionOverlay from "./components/capture/RegionOverlay";
 import WindowPicker from "./components/capture/WindowPicker";
 import WaylandBanner from "./components/shell/WaylandBanner";
@@ -20,11 +22,61 @@ import { useHotkeys } from "./hooks/useHotkeys";
 
 type View = "main" | "settings";
 
+function addImageFromUrl(url: string) {
+  console.log("[Screenshots] Loading image from:", url);
+  const img = new window.Image();
+  img.src = url;
+  img.onload = () => {
+    console.log("[Screenshots] Image loaded:", img.naturalWidth, "x", img.naturalHeight);
+    const { canvasWidth, canvasHeight, addImage } = useCanvasStore.getState();
+    const maxDim = Math.min(canvasWidth, canvasHeight) * 0.6;
+    let w = img.naturalWidth;
+    let h = img.naturalHeight;
+    if (w > maxDim || h > maxDim) {
+      const ratio = Math.min(maxDim / w, maxDim / h);
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+    }
+
+    const newImage: CanvasImage = {
+      id: crypto.randomUUID(),
+      src: url,
+      x: canvasWidth / 2,
+      y: canvasHeight / 2,
+      width: w,
+      height: h,
+      rotation: 0,
+      cornerRadius: 12,
+      flipX: false,
+      flipY: false,
+      shadow: {
+        enabled: true,
+        color: "rgba(0,0,0,0.3)",
+        blur: 20,
+        offsetX: 0,
+        offsetY: 10,
+      },
+      insetBorder: {
+        enabled: false,
+        color: "#ffffff",
+        width: 8,
+      },
+    };
+    addImage(newImage);
+  };
+  img.onerror = (err) => {
+    console.error("[Screenshots] Image failed to load:", url, err);
+  };
+}
+
 export default function App() {
   const setWayland = useAppStore((s) => s.setWayland);
   const captureState = useAppStore((s) => s.captureState);
   const lastCapturePath = useAppStore((s) => s.lastCapturePath);
   const setCaptureState = useAppStore((s) => s.setCaptureState);
+  const regionScreenshotPath = useAppStore((s) => s.regionScreenshotPath);
+  const setRegionScreenshotPath = useAppStore((s) => s.setRegionScreenshotPath);
+  const images = useCanvasStore((s) => s.images);
   const [view, setView] = useState<View>("main");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const stageRef = useRef<Konva.Stage>(null);
@@ -33,10 +85,41 @@ export default function App() {
 
   const {
     handleFullscreen,
-    handleRegionComplete,
+    handleRegionStart,
     handleRegionCancel,
     handleWindowSelect,
   } = useCaptureFlow();
+
+  const handleRegionComplete = useCallback(
+    (blobUrl: string) => {
+      setRegionScreenshotPath(null);
+      addImageFromUrl(blobUrl);
+      setCaptureState("idle");
+    },
+    [setCaptureState, setRegionScreenshotPath],
+  );
+
+  const handleUpload = useCallback(async () => {
+    try {
+      const filePath = await open({
+        multiple: false,
+        filters: [
+          {
+            name: "Images",
+            extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp"],
+          },
+        ],
+      });
+      console.log("[Screenshots] Upload dialog result:", filePath);
+      if (filePath) {
+        const dataUrl = await readImageFile(filePath as string);
+        console.log("[Screenshots] Upload data URL length:", dataUrl.length);
+        addImageFromUrl(dataUrl);
+      }
+    } catch (err) {
+      console.error("[Screenshots] Upload failed:", err);
+    }
+  }, []);
 
   // Listen for platform flags from Rust
   useEffect(() => {
@@ -94,9 +177,10 @@ export default function App() {
   }, []);
 
   // Region selection overlay
-  if (captureState === "selecting-region") {
+  if (captureState === "selecting-region" && regionScreenshotPath) {
     return (
       <RegionOverlay
+        screenshotSrc={regionScreenshotPath}
         onComplete={handleRegionComplete}
         onCancel={handleRegionCancel}
       />
@@ -108,66 +192,88 @@ export default function App() {
     return <SettingsPage onBack={() => setView("main")} />;
   }
 
+  const hasImages = images.length > 0;
+
   return (
-    <div className="flex h-screen flex-col bg-neutral-950 text-neutral-100">
+    <div className="flex h-screen flex-col bg-zinc-950 text-zinc-100">
       <WaylandBanner />
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-neutral-800">
+      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-zinc-800/60">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => void handleFullscreen()}
+            className="px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors"
+          >
+            Full Screen
+          </button>
+          <button
+            onClick={() => void handleRegionStart()}
+            className="px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors"
+          >
+            Region
+          </button>
+          <button
+            onClick={() => setCaptureState("selecting-window")}
+            className="px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors"
+          >
+            Window
+          </button>
+        </div>
+
+        <div className="w-px h-4 bg-zinc-800/60 mx-1" />
+
         <button
-          onClick={() => void handleFullscreen()}
-          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
+          onClick={() => void handleUpload()}
+          className="px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors"
         >
-          Full Screen
-        </button>
-        <button
-          onClick={() => setCaptureState("selecting-region")}
-          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
-        >
-          Region
-        </button>
-        <button
-          onClick={() => setCaptureState("selecting-window")}
-          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
-        >
-          Window
+          Upload
         </button>
 
         <div className="flex-1" />
 
         {captureState === "capturing" && (
-          <span className="text-xs text-neutral-500 animate-pulse">
+          <span className="text-[13px] text-zinc-500 animate-pulse">
             Capturing...
           </span>
         )}
 
         <button
           onClick={() => setShowShortcuts(true)}
-          className="px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-200 rounded-lg hover:bg-neutral-800 transition-colors"
+          className="px-2.5 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-300 rounded-md hover:bg-zinc-800/60 transition-colors"
         >
-          Shortcuts
+          ?
         </button>
         <button
           onClick={() => setView("settings")}
-          className="px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-200 rounded-lg hover:bg-neutral-800 transition-colors"
+          className="px-2.5 py-1.5 text-[13px] text-zinc-500 hover:text-zinc-300 rounded-md hover:bg-zinc-800/60 transition-colors"
         >
           Settings
         </button>
       </div>
 
-      {/* Main content: sidebar + canvas */}
+      {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar */}
-        <aside className="w-56 border-r border-neutral-800 overflow-y-auto p-3 space-y-6 shrink-0">
+        <aside className="w-52 border-r border-zinc-800/60 overflow-y-auto px-3 py-4 space-y-6 shrink-0">
           <ToolPanel />
           <AspectRatioPanel />
         </aside>
 
-        {/* Canvas */}
-        <CanvasStage stageRef={stageRef} />
+        {/* Canvas area */}
+        {hasImages ? (
+          <CanvasStage stageRef={stageRef} />
+        ) : (
+          <EmptyState
+            onFullscreen={() => void handleFullscreen()}
+            onRegion={() => void handleRegionStart()}
+            onWindow={() => setCaptureState("selecting-window")}
+            onUpload={() => void handleUpload()}
+          />
+        )}
 
         {/* Right sidebar */}
-        <aside className="w-56 border-l border-neutral-800 overflow-y-auto p-3 space-y-6 shrink-0">
+        <aside className="w-60 border-l border-zinc-800/60 overflow-y-auto px-3 py-4 space-y-6 shrink-0">
           <BackgroundPanel />
           <StylePanel />
           <PresetPanel />
@@ -187,6 +293,93 @@ export default function App() {
       {showShortcuts && (
         <ShortcutsModal onClose={() => setShowShortcuts(false)} />
       )}
+    </div>
+  );
+}
+
+function EmptyState({
+  onFullscreen,
+  onRegion,
+  onWindow,
+  onUpload,
+}: {
+  onFullscreen: () => void;
+  onRegion: () => void;
+  onWindow: () => void;
+  onUpload: () => void;
+}) {
+  return (
+    <div className="flex-1 flex items-center justify-center bg-zinc-900/50">
+      <div className="flex flex-col items-center gap-6 max-w-sm">
+        {/* Icon */}
+        <div className="w-16 h-16 rounded-2xl bg-zinc-800/80 flex items-center justify-center">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-zinc-400"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <path d="m21 15-5-5L5 21" />
+          </svg>
+        </div>
+
+        <div className="text-center space-y-1.5">
+          <h2 className="text-[15px] font-medium text-zinc-200">
+            Capture or upload a screenshot
+          </h2>
+          <p className="text-[13px] text-zinc-500 leading-relaxed">
+            Take a screenshot of your screen, a window, or upload an image to start editing.
+          </p>
+        </div>
+
+        {/* Capture buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onFullscreen}
+            className="px-4 py-2 text-[13px] font-medium rounded-lg bg-white text-zinc-900 hover:bg-zinc-200 transition-colors"
+          >
+            Full Screen
+          </button>
+          <button
+            onClick={onRegion}
+            className="px-4 py-2 text-[13px] font-medium rounded-lg bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors"
+          >
+            Region
+          </button>
+          <button
+            onClick={onWindow}
+            className="px-4 py-2 text-[13px] font-medium rounded-lg bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors"
+          >
+            Window
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 w-full">
+          <div className="flex-1 h-px bg-zinc-800/60" />
+          <span className="text-[11px] text-zinc-600">or</span>
+          <div className="flex-1 h-px bg-zinc-800/60" />
+        </div>
+
+        {/* Upload + drop */}
+        <button
+          onClick={onUpload}
+          className="px-4 py-2 text-[13px] rounded-lg bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+        >
+          Upload image
+        </button>
+
+        <p className="text-[11px] text-zinc-600">
+          You can also drag and drop images onto the canvas
+        </p>
+      </div>
     </div>
   );
 }

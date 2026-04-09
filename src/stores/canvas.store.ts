@@ -170,8 +170,8 @@ interface CanvasActions {
 
 const DEFAULT_BACKGROUND: CanvasBackground = {
   type: "linear-gradient",
-  color: "#1e1b4b",
-  gradientColors: ["#6366f1", "#a855f7"],
+  color: "#0f172a",
+  gradientColors: ["#0f172a", "#1e293b"],
   gradientAngle: 135,
   imageSrc: null,
   blur: 0,

@@ -22,14 +22,12 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
 
     setExporting(true);
     try {
-      // Render at full canvas resolution
       const dataUrl = stage.toDataURL({
         pixelRatio: scale,
         mimeType: format === "png" ? "image/png" : "image/jpeg",
         quality: quality / 100,
       });
 
-      // Convert data URL to raw RGBA pixel data
       const img = new window.Image();
       img.src = dataUrl;
       await new Promise<void>((resolve) => { img.onload = () => resolve(); });
@@ -45,7 +43,7 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
         new Uint8Array(imageData.data.buffer),
         canvas.width,
         canvas.height,
-        { format, quality, scale: 1 }, // scale already applied
+        { format, quality, scale: 1 },
       );
 
       if (result) setLastExport(result);
@@ -75,8 +73,8 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+    <div className="space-y-3">
+      <h3 className="text-[11px] font-medium text-zinc-500 tracking-wide">
         Export
       </h3>
 
@@ -86,10 +84,10 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
           <button
             key={f}
             onClick={() => setFormat(f)}
-            className={`px-2 py-1 text-xs rounded uppercase ${
+            className={`px-2 py-1 text-[13px] rounded-md uppercase transition-colors ${
               format === f
-                ? "bg-indigo-600 text-white"
-                : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+                ? "bg-zinc-100 text-zinc-900"
+                : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
             }`}
           >
             {f}
@@ -97,19 +95,19 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
         ))}
       </div>
 
-      {/* Quality (JPEG/WebP only) */}
+      {/* Quality */}
       {format !== "png" && (
         <div className="flex items-center gap-2">
-          <label className="text-xs text-neutral-500 w-12">Quality</label>
+          <label className="text-[11px] text-zinc-500 w-10">Quality</label>
           <input
             type="range"
             min={10}
             max={100}
             value={quality}
             onChange={(e) => setQuality(Number(e.target.value))}
-            className="flex-1"
+            className="flex-1 accent-zinc-400"
           />
-          <span className="text-xs text-neutral-500 w-8 text-right">
+          <span className="text-[11px] text-zinc-500 w-8 text-right">
             {quality}%
           </span>
         </div>
@@ -117,16 +115,16 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
 
       {/* Scale */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-neutral-500 w-12">Scale</label>
+        <label className="text-[11px] text-zinc-500 w-10">Scale</label>
         <div className="flex gap-1">
           {[1, 2, 3].map((s) => (
             <button
               key={s}
               onClick={() => setScale(s)}
-              className={`px-2 py-1 text-xs rounded ${
+              className={`px-2 py-1 text-[13px] rounded-md transition-colors ${
                 scale === s
-                  ? "bg-indigo-600 text-white"
-                  : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+                  ? "bg-zinc-100 text-zinc-900"
+                  : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
               }`}
             >
               {s}x
@@ -135,28 +133,28 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
         </div>
       </div>
 
-      <p className="text-[10px] text-neutral-600">
-        Output: {canvasWidth * scale} x {canvasHeight * scale}
+      <p className="text-[11px] text-zinc-600">
+        Output: {canvasWidth * scale} × {canvasHeight * scale}
       </p>
 
       {/* Export buttons */}
       <button
         onClick={handleExport}
         disabled={exporting}
-        className="w-full px-3 py-2 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+        className="w-full px-3 py-2 text-[13px] font-medium rounded-md bg-white text-zinc-900 hover:bg-zinc-200 disabled:opacity-40 transition-colors"
       >
         {exporting ? "Exporting..." : "Save to File"}
       </button>
 
       <button
         onClick={handleCopyToClipboard}
-        className="w-full px-3 py-1.5 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
+        className="w-full px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
       >
         Copy to Clipboard
       </button>
 
       {lastExport && (
-        <p className="text-[10px] text-green-400 truncate">{lastExport}</p>
+        <p className="text-[11px] text-emerald-400 truncate">{lastExport}</p>
       )}
     </div>
   );

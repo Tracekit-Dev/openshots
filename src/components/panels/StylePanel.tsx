@@ -41,23 +41,23 @@ export default function StylePanel() {
   };
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+    <div className="space-y-3">
+      <h3 className="text-[11px] font-medium text-zinc-500 tracking-wide">
         Style
       </h3>
 
       {/* Padding */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-neutral-500 w-16">Padding</label>
+        <label className="text-[11px] text-zinc-500 w-14">Padding</label>
         <input
           type="range"
           min={0}
           max={200}
           value={padding}
           onChange={(e) => setPadding(Number(e.target.value))}
-          className="flex-1"
+          className="flex-1 accent-zinc-400"
         />
-        <span className="text-xs text-neutral-500 w-8 text-right">
+        <span className="text-[11px] text-zinc-500 w-7 text-right">
           {padding}
         </span>
       </div>
@@ -66,7 +66,7 @@ export default function StylePanel() {
       {images.length > 1 && (
         <button
           onClick={handleFanLayout}
-          className="w-full px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
+          className="w-full px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
         >
           Auto Fan Layout
         </button>
@@ -75,13 +75,13 @@ export default function StylePanel() {
       {/* Selected image controls */}
       {selected && (
         <>
-          <div className="border-t border-neutral-800 pt-3 mt-3">
-            <p className="text-xs text-neutral-400 mb-2">Selected Image</p>
+          <div className="border-t border-zinc-800/60 pt-3 mt-3">
+            <p className="text-[11px] text-zinc-500 mb-2">Selected Image</p>
           </div>
 
           {/* Corner radius */}
           <div className="flex items-center gap-2">
-            <label className="text-xs text-neutral-500 w-16">Corners</label>
+            <label className="text-[11px] text-zinc-500 w-14">Corners</label>
             <input
               type="range"
               min={0}
@@ -92,9 +92,9 @@ export default function StylePanel() {
                   cornerRadius: Number(e.target.value),
                 })
               }
-              className="flex-1"
+              className="flex-1 accent-zinc-400"
             />
-            <span className="text-xs text-neutral-500 w-8 text-right">
+            <span className="text-[11px] text-zinc-500 w-7 text-right">
               {selected.cornerRadius}
             </span>
           </div>
@@ -110,15 +110,15 @@ export default function StylePanel() {
                     shadow: { ...selected.shadow, enabled: e.target.checked },
                   })
                 }
-                className="rounded"
+                className="rounded accent-zinc-400"
               />
-              <span className="text-xs text-neutral-300">Drop Shadow</span>
+              <span className="text-[13px] text-zinc-300">Drop Shadow</span>
             </label>
 
             {selected.shadow.enabled && (
               <>
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-neutral-500 w-16">Blur</label>
+                  <label className="text-[11px] text-zinc-500 w-14">Blur</label>
                   <input
                     type="range"
                     min={0}
@@ -129,11 +129,11 @@ export default function StylePanel() {
                         shadow: { ...selected.shadow, blur: Number(e.target.value) },
                       })
                     }
-                    className="flex-1"
+                    className="flex-1 accent-zinc-400"
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-neutral-500 w-16">Offset Y</label>
+                  <label className="text-[11px] text-zinc-500 w-14">Offset Y</label>
                   <input
                     type="range"
                     min={-40}
@@ -144,7 +144,7 @@ export default function StylePanel() {
                         shadow: { ...selected.shadow, offsetY: Number(e.target.value) },
                       })
                     }
-                    className="flex-1"
+                    className="flex-1 accent-zinc-400"
                   />
                 </div>
               </>
@@ -165,15 +165,15 @@ export default function StylePanel() {
                     },
                   })
                 }
-                className="rounded"
+                className="rounded accent-zinc-400"
               />
-              <span className="text-xs text-neutral-300">Inset Border</span>
+              <span className="text-[13px] text-zinc-300">Inset Border</span>
             </label>
 
             {selected.insetBorder.enabled && (
               <button
                 onClick={handleAutoInsetBorder}
-                className="w-full px-3 py-1.5 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
+                className="w-full px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
               >
                 Auto-match color
               </button>
@@ -181,12 +181,12 @@ export default function StylePanel() {
           </div>
 
           {/* Flip */}
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <button
               onClick={() =>
                 updateImage(selected.id, { flipX: !selected.flipX })
               }
-              className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
+              className="flex-1 px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
             >
               Flip H
             </button>
@@ -194,7 +194,7 @@ export default function StylePanel() {
               onClick={() =>
                 updateImage(selected.id, { flipY: !selected.flipY })
               }
-              className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
+              className="flex-1 px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
             >
               Flip V
             </button>

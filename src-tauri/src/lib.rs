@@ -160,10 +160,13 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::capture::capture_fullscreen,
-            commands::capture::capture_region,
             commands::capture::list_windows,
             commands::capture::capture_window,
             commands::capture::check_screen_permission,
+            commands::capture::read_image_file,
+            commands::capture::list_system_wallpapers,
+            commands::capture::convert_heic_thumbnail,
+            commands::capture::convert_heic_to_data_url,
             commands::export::export_image,
             update_hotkeys,
         ])

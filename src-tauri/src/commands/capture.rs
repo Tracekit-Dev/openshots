@@ -1,8 +1,7 @@
+use base64::Engine;
 use image::ImageEncoder;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
-use uuid::Uuid;
 use xcap::{Monitor, Window};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -12,39 +11,23 @@ pub struct WindowInfo {
     pub app_name: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CaptureRegionArgs {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
-}
-
-/// Write an xcap image buffer to a temp PNG file and return the path.
-fn save_to_temp(img: &xcap::image::RgbaImage, app: &AppHandle) -> Result<String, String> {
-    let temp_dir = app
-        .path()
-        .temp_dir()
-        .map_err(|e| format!("Failed to get temp dir: {e}"))?;
-    let filename = format!("screenshot-{}.png", Uuid::new_v4());
-    let path: PathBuf = temp_dir.join(filename);
-
-    let file =
-        std::fs::File::create(&path).map_err(|e| format!("Failed to create temp file: {e}"))?;
-    let writer = std::io::BufWriter::new(file);
-
-    image::codecs::png::PngEncoder::new(writer)
+/// Encode an image buffer as a JPEG data URL.
+/// JPEG is much smaller than PNG for screenshots (~3-5MB vs ~15-20MB for retina).
+fn encode_data_url(img: &xcap::image::RgbaImage) -> Result<String, String> {
+    let rgb = image::DynamicImage::ImageRgba8(img.clone()).to_rgb8();
+    let mut buf = Vec::new();
+    let cursor = std::io::Cursor::new(&mut buf);
+    image::codecs::jpeg::JpegEncoder::new_with_quality(cursor, 90)
         .write_image(
-            img.as_raw(),
-            img.width(),
-            img.height(),
-            image::ExtendedColorType::Rgba8,
+            rgb.as_raw(),
+            rgb.width(),
+            rgb.height(),
+            image::ExtendedColorType::Rgb8,
         )
-        .map_err(|e| format!("Failed to encode PNG: {e}"))?;
+        .map_err(|e| format!("Failed to encode JPEG: {e}"))?;
 
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| "Invalid temp path encoding".to_string())
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&buf);
+    Ok(format!("data:image/jpeg;base64,{b64}"))
 }
 
 /// Find the primary monitor, falling back to the first available.
@@ -61,36 +44,36 @@ fn get_primary_monitor() -> Result<Monitor, String> {
         .ok_or_else(|| "No monitor found".to_string())
 }
 
-/// Capture the primary monitor. Returns absolute path to a temp PNG file.
-#[tauri::command]
-pub async fn capture_fullscreen(app: AppHandle) -> Result<String, String> {
-    let monitor = get_primary_monitor()?;
-    let img = monitor
-        .capture_image()
-        .map_err(|e| format!("Failed to capture screen: {e}"))?;
-    save_to_temp(&img, &app)
+/// Hide the main window, wait for it to disappear.
+fn hide_main_window(app: &AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.hide();
+    }
+    std::thread::sleep(std::time::Duration::from_millis(500));
 }
 
-/// Capture a specific region (physical pixel coordinates).
-/// Returns absolute path to a temp PNG file.
-#[tauri::command]
-pub async fn capture_region(app: AppHandle, args: CaptureRegionArgs) -> Result<String, String> {
-    if args.width == 0 || args.height == 0 {
-        return Err("Region width and height must be greater than zero".to_string());
+/// Show the main window and bring it to focus.
+fn show_main_window(app: &AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.show();
+        let _ = win.set_focus();
     }
+}
 
-    let monitor = get_primary_monitor()?;
-    let full = monitor
-        .capture_image()
-        .map_err(|e| format!("Failed to capture screen: {e}"))?;
-
-    let x = args.x.max(0) as u32;
-    let y = args.y.max(0) as u32;
-    let w = args.width.min(full.width().saturating_sub(x));
-    let h = args.height.min(full.height().saturating_sub(y));
-
-    let cropped = image::imageops::crop_imm(&full, x, y, w, h).to_image();
-    save_to_temp(&cropped, &app)
+/// Capture the primary monitor. Hides the app window first.
+/// Returns a data URL (data:image/png;base64,...).
+#[tauri::command]
+pub async fn capture_fullscreen(app: AppHandle) -> Result<String, String> {
+    hide_main_window(&app);
+    let result = (|| {
+        let monitor = get_primary_monitor()?;
+        let img = monitor
+            .capture_image()
+            .map_err(|e| format!("Failed to capture screen: {e}"))?;
+        encode_data_url(&img)
+    })();
+    show_main_window(&app);
+    result
 }
 
 /// Return metadata for all capturable windows.
@@ -113,9 +96,9 @@ pub async fn list_windows() -> Result<Vec<WindowInfo>, String> {
     Ok(result)
 }
 
-/// Capture a specific window by ID. Returns path to temp PNG file.
+/// Capture a specific window by ID. Returns a data URL.
 #[tauri::command]
-pub async fn capture_window(app: AppHandle, window_id: u32) -> Result<String, String> {
+pub async fn capture_window(_app: AppHandle, window_id: u32) -> Result<String, String> {
     let windows = Window::all().map_err(|e| format!("Failed to list windows: {e}"))?;
     let window = windows
         .into_iter()
@@ -126,7 +109,99 @@ pub async fn capture_window(app: AppHandle, window_id: u32) -> Result<String, St
         .capture_image()
         .map_err(|e| format!("Failed to capture window: {e}"))?;
 
-    save_to_temp(&img, &app)
+    encode_data_url(&img)
+}
+
+/// Read a local image file and return it as a data URL.
+/// Used by the upload flow to bypass the asset protocol.
+#[tauri::command]
+pub async fn read_image_file(path: String) -> Result<String, String> {
+    let bytes = std::fs::read(&path).map_err(|e| format!("Failed to read {path}: {e}"))?;
+
+    let ext = path.rsplit('.').next().unwrap_or("png").to_lowercase();
+    let mime = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "gif" => "image/gif",
+        "bmp" => "image/bmp",
+        _ => "image/png",
+    };
+
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    Ok(format!("data:{mime};base64,{b64}"))
+}
+
+/// List macOS system wallpaper thumbnails. Returns (name, path) pairs.
+#[tauri::command]
+pub async fn list_system_wallpapers() -> Result<Vec<(String, String)>, String> {
+    let thumb_dir = std::path::Path::new("/System/Library/Desktop Pictures/.thumbnails");
+    if !thumb_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut wallpapers = Vec::new();
+    let entries = std::fs::read_dir(thumb_dir).map_err(|e| e.to_string())?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().map_or(false, |ext| ext == "heic") {
+            let name = path
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            wallpapers.push((name, path.to_string_lossy().to_string()));
+        }
+    }
+    wallpapers.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(wallpapers)
+}
+
+/// Convert a HEIC file to a small JPEG thumbnail data URL.
+#[tauri::command]
+pub async fn convert_heic_thumbnail(path: String) -> Result<String, String> {
+    let tmp = std::env::temp_dir().join(format!("wp-thumb-{}.jpg", uuid::Uuid::new_v4()));
+    let output = std::process::Command::new("sips")
+        .args([
+            "-s", "format", "jpeg",
+            "-s", "formatOptions", "60",
+            "-Z", "160",
+            &path, "--out",
+        ])
+        .arg(tmp.as_os_str())
+        .output()
+        .map_err(|e| format!("Failed to run sips: {e}"))?;
+
+    if !output.status.success() {
+        return Err(format!("sips failed: {}", String::from_utf8_lossy(&output.stderr)));
+    }
+
+    let bytes = std::fs::read(&tmp).map_err(|e| format!("Failed to read thumbnail: {e}"))?;
+    let _ = std::fs::remove_file(&tmp);
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    Ok(format!("data:image/jpeg;base64,{b64}"))
+}
+
+/// Convert a HEIC file to full-size JPEG data URL using macOS sips.
+#[tauri::command]
+pub async fn convert_heic_to_data_url(path: String) -> Result<String, String> {
+    let tmp = std::env::temp_dir().join(format!("wallpaper-{}.jpg", uuid::Uuid::new_v4()));
+    let output = std::process::Command::new("sips")
+        .args(["-s", "format", "jpeg", "-s", "formatOptions", "80", &path, "--out"])
+        .arg(tmp.as_os_str())
+        .output()
+        .map_err(|e| format!("Failed to run sips: {e}"))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "sips failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    let bytes = std::fs::read(&tmp).map_err(|e| format!("Failed to read converted file: {e}"))?;
+    let _ = std::fs::remove_file(&tmp);
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    Ok(format!("data:image/jpeg;base64,{b64}"))
 }
 
 /// Check Screen Recording permission (macOS only, always true on other platforms).

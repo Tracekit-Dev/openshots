@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -14,4 +14,50 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
+}
+
+/* Range input styling */
+input[type="range"] {
+  height: 4px;
+  appearance: none;
+  background: #3f3f46;
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #d4d4d8;
+  cursor: pointer;
+  border: 2px solid #27272a;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: #fafafa;
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  accent-color: #a1a1aa;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
 }

@@ -11,14 +11,17 @@
   },
   "app": {
     "withGlobalTauri": false,
+    "security": {
+      "csp": "default-src 'self' 'unsafe-inline' asset: https://asset.localhost http://asset.localhost; img-src 'self' asset: https://asset.localhost http://asset.localhost blob: data:; style-src 'self' 'unsafe-inline'"
+    },
     "windows": [
       {
         "label": "main",
         "title": "Screenshots",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 900,
-        "minHeight": 600,
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 700,
         "visible": true,
         "decorations": true
       }
