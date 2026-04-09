@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useAppStore } from "../stores/app.store";
 import {
   captureFullscreen,
+  captureAllMonitors,
   captureWindow,
   checkScreenPermission,
 } from "../ipc/capture";
@@ -42,8 +43,8 @@ export function useCaptureFlow() {
         setCaptureState("idle");
         return;
       }
-      // Rust hides the window, captures fullscreen, then shows it again
-      const path = await captureFullscreen();
+      // Capture all monitors for region selection across displays
+      const path = await captureAllMonitors();
       setRegionScreenshotPath(path);
       setCaptureState("selecting-region");
     } catch (err) {

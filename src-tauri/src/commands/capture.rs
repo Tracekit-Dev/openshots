@@ -61,7 +61,7 @@ fn show_main_window(app: &AppHandle) {
 }
 
 /// Capture the primary monitor. Hides the app window first.
-/// Returns a data URL (data:image/png;base64,...).
+/// Returns a data URL (data:image/jpeg;base64,...).
 #[tauri::command]
 pub async fn capture_fullscreen(app: AppHandle) -> Result<String, String> {
     hide_main_window(&app);
@@ -76,7 +76,87 @@ pub async fn capture_fullscreen(app: AppHandle) -> Result<String, String> {
     result
 }
 
-/// Return metadata for all capturable windows.
+/// Capture all monitors stitched into a single image.
+/// Used for region selection across multiple displays.
+#[tauri::command]
+pub async fn capture_all_monitors(app: AppHandle) -> Result<String, String> {
+    hide_main_window(&app);
+    let result = (|| {
+        let monitors = Monitor::all().map_err(|e| format!("Failed to list monitors: {e}"))?;
+        if monitors.is_empty() {
+            return Err("No monitors found".to_string());
+        }
+        if monitors.len() == 1 {
+            let img = monitors[0]
+                .capture_image()
+                .map_err(|e| format!("Failed to capture: {e}"))?;
+            return encode_data_url(&img);
+        }
+
+        // Calculate total canvas size from monitor positions
+        let mut min_x = i32::MAX;
+        let mut min_y = i32::MAX;
+        let mut max_x = i32::MIN;
+        let mut max_y = i32::MIN;
+
+        let mut captures: Vec<(i32, i32, xcap::image::RgbaImage)> = Vec::new();
+        for m in &monitors {
+            let x = m.x().unwrap_or(0);
+            let y = m.y().unwrap_or(0);
+            let img = m
+                .capture_image()
+                .map_err(|e| format!("Failed to capture monitor: {e}"))?;
+            let w = img.width() as i32;
+            let h = img.height() as i32;
+            min_x = min_x.min(x);
+            min_y = min_y.min(y);
+            max_x = max_x.max(x + w);
+            max_y = max_y.max(y + h);
+            captures.push((x, y, img));
+        }
+
+        let total_w = (max_x - min_x) as u32;
+        let total_h = (max_y - min_y) as u32;
+        let mut stitched = xcap::image::RgbaImage::new(total_w, total_h);
+
+        for (x, y, img) in &captures {
+            let ox = (x - min_x) as u32;
+            let oy = (y - min_y) as u32;
+            image::imageops::overlay(&mut stitched, img, ox as i64, oy as i64);
+        }
+
+        encode_data_url(&stitched)
+    })();
+    show_main_window(&app);
+    result
+}
+
+/// System windows/widgets to filter out — these aren't real app windows.
+const FILTERED_TITLES: &[&str] = &[
+    "Control Center",
+    "Notification Center",
+    "Spotlight",
+    "Focus",
+    "Dock",
+    "Window Server",
+    "WindowManager",
+    "SystemUIServer",
+    "Wallpaper",
+    "Finder Desktop",
+];
+
+const FILTERED_APPS: &[&str] = &[
+    "Control Center",
+    "Notification Center",
+    "WindowManager",
+    "Window Server",
+    "Dock",
+    "SystemUIServer",
+    "Spotlight",
+    "OpenShots",
+];
+
+/// Return metadata for all capturable windows, filtering system UI.
 #[tauri::command]
 pub async fn list_windows() -> Result<Vec<WindowInfo>, String> {
     let windows = Window::all().map_err(|e| format!("Failed to list windows: {e}"))?;
@@ -84,13 +164,25 @@ pub async fn list_windows() -> Result<Vec<WindowInfo>, String> {
     let mut result = Vec::new();
     for w in windows {
         let title = w.title().unwrap_or_default();
+        let app_name = w.app_name().unwrap_or_default();
+
+        // Skip empty titles
         if title.is_empty() {
             continue;
         }
+
+        // Skip system UI windows
+        if FILTERED_TITLES.iter().any(|&f| title.contains(f)) {
+            continue;
+        }
+        if FILTERED_APPS.iter().any(|&f| app_name == f) {
+            continue;
+        }
+
         result.push(WindowInfo {
             id: w.id().unwrap_or(0),
             title,
-            app_name: w.app_name().unwrap_or_default(),
+            app_name,
         });
     }
     Ok(result)

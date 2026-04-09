@@ -161,6 +161,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::capture::capture_fullscreen,
+            commands::capture::capture_all_monitors,
             commands::capture::list_windows,
             commands::capture::capture_window,
             commands::capture::check_screen_permission,

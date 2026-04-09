@@ -15,6 +15,14 @@ export async function captureFullscreen(): Promise<string> {
 }
 
 /**
+ * Capture all monitors stitched together.
+ * Used for region selection across multiple displays.
+ */
+export async function captureAllMonitors(): Promise<string> {
+  return invoke<string>("capture_all_monitors");
+}
+
+/**
  * List all capturable windows with their metadata.
  */
 export async function listWindows(): Promise<WindowInfo[]> {
