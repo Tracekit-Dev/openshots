@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicehash/tauri/v2/crates/tauri-config-schema/schema.json",
-  "productName": "Screenshots",
+  "productName": "OpenShots",
   "version": "0.1.0",
-  "identifier": "app.screenshots.capture",
+  "identifier": "app.openshots.capture",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -17,7 +17,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Screenshots",
+        "title": "OpenShots",
         "width": 1440,
         "height": 900,
         "minWidth": 1024,

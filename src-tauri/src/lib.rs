@@ -43,7 +43,7 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
         MenuItem::with_id(app, "capture-window", "Capture Window", true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit Screenshots", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit OpenShots", true, None::<&str>)?;
 
     let menu = Menu::with_items(
         app,

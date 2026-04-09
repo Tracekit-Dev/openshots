@@ -1,10 +1,10 @@
 [package]
-name = "screenshots"
+name = "openshots"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "screenshots_lib"
+name = "openshots_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]
