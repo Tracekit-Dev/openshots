@@ -30,29 +30,35 @@ impl Default for HotkeyConfig {
 }
 
 fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
-    let capture_region =
-        MenuItem::with_id(app, "capture-region", "Capture Region", true, None::<&str>)?;
+    let open_app = MenuItem::with_id(app, "open", "Open Screenshots", true, None::<&str>)?;
+    let sep1 = PredefinedMenuItem::separator(app)?;
     let capture_screen = MenuItem::with_id(
         app,
         "capture-screen",
         "Capture Full Screen",
         true,
-        None::<&str>,
+        Some("CommandOrControl+Shift+4"),
     )?;
+    let capture_region =
+        MenuItem::with_id(app, "capture-region", "Capture Region", true, Some("CommandOrControl+Shift+3"))?;
     let capture_window_item =
-        MenuItem::with_id(app, "capture-window", "Capture Window", true, None::<&str>)?;
-    let sep = PredefinedMenuItem::separator(app)?;
-    let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit Screenshots", true, None::<&str>)?;
+        MenuItem::with_id(app, "capture-window", "Capture Window", true, Some("CommandOrControl+Shift+5"))?;
+    let sep2 = PredefinedMenuItem::separator(app)?;
+    let settings = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
+    let sep3 = PredefinedMenuItem::separator(app)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Screenshots", true, Some("CommandOrControl+Q"))?;
 
     let menu = Menu::with_items(
         app,
         &[
-            &capture_region,
+            &open_app,
+            &sep1,
             &capture_screen,
+            &capture_region,
             &capture_window_item,
-            &sep,
+            &sep2,
             &settings,
+            &sep3,
             &quit,
         ],
     )?;
@@ -60,8 +66,15 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
-        .show_menu_on_left_click(false)
+        .show_menu_on_left_click(true)
+        .tooltip("Screenshots")
         .on_menu_event(|app, event| match event.id.as_ref() {
+            "open" => {
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.show();
+                    let _ = win.set_focus();
+                }
+            }
             "capture-region" => {
                 let _ = app.emit("capture:region", ());
             }
@@ -80,20 +93,6 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
             }
             "quit" => app.exit(0),
             _ => {}
-        })
-        .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click {
-                button: MouseButton::Left,
-                button_state: MouseButtonState::Up,
-                ..
-            } = event
-            {
-                let app = tray.app_handle();
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                }
-            }
         })
         .build(app)?;
     Ok(())
