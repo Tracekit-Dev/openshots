@@ -20,3 +20,6 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Planning artifacts (internal dev only)
+.planning/
