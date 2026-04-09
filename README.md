@@ -33,6 +33,11 @@ OpenShots is a cross-platform desktop app built with Tauri (Rust + React). Captu
 - One-click clipboard copy
 - Save/apply reusable presets
 
+**Automation** *(coming soon)*
+- CLI for batch processing with preset support
+- Agent-friendly interface — let AI tools like Claude Code generate polished visuals automatically
+- `openshots beautify --preset <name> --input <glob> --output <dir>`
+
 ## Install
 
 Download the latest release for your platform:
