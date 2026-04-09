@@ -4,75 +4,76 @@
 
 See: .planning/PROJECT.md (updated 2026-04-09)
 
+**App name:** OpenShots
 **Core value:** Users can turn raw screenshots into polished, shareable visuals in seconds — without leaving the app.
-**Current focus:** Phase 2 — Canvas Editor and Beautification
+**Current focus:** Phase 2 — Canvas Editor (mostly built, needs summaries and remaining items)
 
 ## Current Position
 
 Phase: 2 of 3 (Canvas Editor and Beautification)
-Plan: 0 of 3 in current phase
-Status: Ready to execute
-Last activity: 2026-04-09 — Phase 2 plans created (02-01, 02-02, 02-03)
+Plan: 0 of 3 formally complete (but ~85% of work already implemented)
+Status: Plans need summaries written to reflect completed work
+Last activity: 2026-04-09 — Phase 1 complete, Phase 2+3 largely implemented in same session
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [████████░░] ~80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
+- Total plans completed: 2 (Phase 1)
+- Plans with work done but no summary: 5 (02-01, 02-02, 02-03, Phase 3 export/presets)
 - Average duration: —
-- Total execution time: —
+- Total execution time: Single session (2026-04-09)
 
 **By Phase:**
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| - | - | - | - |
-
-**Recent Trend:**
-- Last 5 plans: —
-- Trend: —
-
-*Updated after each plan completion*
+| Phase | Plans | Status |
+|-------|-------|--------|
+| 1 | 2/2 | ✅ Complete |
+| 2 | 0/3 formal, ~85% built | Needs summaries |
+| 3 | 0/TBD formal, ~80% built | Needs plans + summaries |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
 - Init: Tauri 2.x + React/TypeScript + Konva.js chosen for cross-platform + binary size constraint
-- Init: All image processing in Rust backend; IPC must never carry raw pixel data (asset protocol / temp files only)
-- Init: Undo/redo via zundo stores structural object model only — no pixel data in history
-- Phase 1: xcap crate used directly (not tauri-plugin-screenshots community plugin) — better maintenance guarantees
-- Phase 1: IPC image transfer uses temp file + convertFileSrc() pattern — eliminates JSON byte array overhead
-- Phase 1: Region overlay implemented as second Tauri window (transparent, decorations:false, alwaysOnTop) — no native API alternative
-- Phase 1: Wayland detection via WAYLAND_DISPLAY env var at startup — skip shortcut registration, show banner
-- Phase 2: Konva v10 used (ESM-only, native cornerRadius on Image, updated text rendering) — confirmed in RESEARCH.md
-- Phase 2: Canvas-side Konva filters for live blur/pixelate preview; Rust imageproc for final export-quality output
-- Phase 2: Background removal via @huggingface/transformers v4 RMBG-1.4 in a Web Worker — one-time download, never bundled
-- Phase 2: Padding model = canvas expansion (background grows around image, not image shrinks)
-- Phase 2: Transformer onTransformEnd must normalize scaleX/scaleY → actual pixel width/height and reset scale to 1
-- Phase 2: Arrow annotations use endpoint drag handles, NOT the standard Konva Transformer (Transformer conflicts with Arrow's points-based geometry)
-- Phase 2: SHORTCUT_REGISTRY is the single source of truth for keyboard shortcuts — both tinykeys binding and ShortcutsModal derive from it
+- Phase 1: xcap crate used directly (not community plugin)
+- Phase 1: **IPC uses JPEG data URLs (base64)** — NOT temp file + asset protocol. The `asset://` protocol was broken on macOS WKWebView in dev mode. Data URLs work reliably for screenshots up to ~5MB JPEG.
+- Phase 1: Region overlay uses in-app canvas showing pre-captured fullscreen, NOT a separate transparent Tauri window. Simpler, avoids transparent window issues.
+- Phase 1: Wayland detection via WAYLAND_DISPLAY env var at startup
+- Phase 1: App renamed from "Screenshots" to "OpenShots"
+- Phase 1: UI redesigned with Apple/Linear.app aesthetic (zinc palette, no purple)
+- Phase 2: Konva v10 used (ESM-only, native cornerRadius on Image)
+- Phase 2: Canvas-side Konva filters for live blur/pixelate preview; Rust imageproc for final export
+- Phase 2: Padding implemented as reactive render-time scaling (not store mutation) — original image dims preserved
+- Phase 2: SHORTCUT_REGISTRY is single source of truth for keyboard shortcuts
+- Phase 2: Background removal via @huggingface/transformers not yet implemented
+- Phase 2: Added macOS system wallpaper browser (HEIC→JPEG via sips)
+- Phase 3: Export (PNG/JPEG/WebP), clipboard copy, presets already implemented
+
+### What's NOT Built Yet
+
+1. **Snap guides** during image drag (planned in 02-01)
+2. **Background removal** — Transformers.js + RMBG-1.4 Web Worker (planned in 02-02)
+3. **Crop overlay** — interactive crop with Enter to confirm (planned in 02-02)
+4. **Grain filter** — slider exists but Konva grain rendering not implemented
+5. **CLI batch processing** — Phase 3 remaining work
 
 ### Pending Todos
 
-- Validate xcap 0.9.x API surface during Plan 01-02 execution: confirm method is `capture_area` or `capture_region` for region capture
-- Confirm `tauri-plugin-macos-permissions` v2.3.0 Cargo.toml feature flags during Plan 01-01 setup
-- Phase 2 Plan 02-02: Verify exact @huggingface/transformers v4 pipeline output shape for RMBG-1.4 at runtime (result[0].mask API)
-- Phase 2 Plan 02-02: Confirm imageproc Gaussian blur channel handling — may need RGBA-to-Luma8 conversion and alpha channel recombination
-- Phase 2 Plan 02-03: Remove temporary addEventListener in AnnotationLayer.tsx after Plan 02-03 installs useHotkeys
+- Write SUMMARY.md files for Phase 2 plans (02-01, 02-02, 02-03)
+- Implement remaining Phase 2 items (snap guides, bg removal, crop, grain)
+- Plan and implement CLI batch processing (Phase 3)
 
 ### Blockers/Concerns
 
-- Phase 2: Transformers.js WebGPU performance on Windows integrated GPU and Linux is an unknown — benchmark early; Rust-side `ort` crate is the fallback if browser-side latency exceeds ~5s
-- Phase 2: zundo middleware compatibility with Zustand 5.x must be confirmed during Plan 02-01 execution (zundo 2.3.0 claims Zustand 5 support — verify)
-- Phase 2 Plan 02-02: Pixelate Konva filter produces black boxes on alpha regions (documented Konva issue #340) — use Rust for export output only; Konva filter is preview-only
+- Transformers.js WebGPU performance on Windows/Linux is unknown — benchmark early
+- Pixelate Konva filter may produce artifacts on alpha regions
+- Large retina screenshots as JPEG data URLs are ~3-5MB — works but uses memory
 
 ## Session Continuity
 
 Last session: 2026-04-09
-Stopped at: Phase 2 plans written (02-01-PLAN.md, 02-02-PLAN.md, 02-03-PLAN.md) — ready to execute with /gsd-execute-phase 2
-Resume file: None
+Stopped at: Phase 1 complete. Phase 2 ~85% built. Roadmap updated with "already implemented" annotations. Phase 2 plans need summaries.
+Resume with: Write Phase 2 summaries, then implement remaining items (snap guides, bg removal, crop, grain) or move to CLI.
