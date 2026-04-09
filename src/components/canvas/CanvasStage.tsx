@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Stage } from "react-konva";
 import Konva from "konva";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { useCanvasStore, type CanvasImage } from "../../stores/canvas.store";
 import { useToolStore } from "../../stores/tool.store";
 import BackgroundLayer from "./BackgroundLayer";
@@ -16,19 +18,26 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
   const [zoom, setZoom] = useState(1);
+  // Arrow drag-to-draw state
+  const [drawingArrowId, setDrawingArrowId] = useState<string | null>(null);
 
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
-  const addImage = useCanvasStore((s) => s.addImage);
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
   const addAnnotation = useCanvasStore((s) => s.addAnnotation);
+  const updateAnnotation = useCanvasStore((s) => s.updateAnnotation);
   const addPrivacyRegion = useCanvasStore((s) => s.addPrivacyRegion);
   const activeTool = useToolStore((s) => s.activeTool);
   const strokeColor = useToolStore((s) => s.strokeColor);
   const fillColor = useToolStore((s) => s.fillColor);
   const strokeWidth = useToolStore((s) => s.strokeWidth);
   const fontSize = useToolStore((s) => s.fontSize);
+  const selectedEmoji = useToolStore((s) => s.selectedEmoji);
   const setActiveTool = useToolStore((s) => s.setActiveTool);
+
+  // Undo/redo
+  const undo = useCallback(() => useCanvasStore.temporal.getState().undo(), []);
+  const redo = useCallback(() => useCanvasStore.temporal.getState().redo(), []);
 
   // Base scale fits canvas to container, zoom multiplies it
   const baseScale = Math.min(
@@ -68,87 +77,127 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
     return () => el.removeEventListener("wheel", handleWheel);
   }, []);
 
-  // Cmd+0 to reset zoom
+  // Cmd+0 to reset zoom, Cmd+Z/Cmd+Shift+Z for undo/redo
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "0") {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "0") {
         e.preventDefault();
         setZoom(1);
+      }
+      if (mod && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if (mod && e.key === "z" && e.shiftKey) {
+        e.preventDefault();
+        redo();
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
+  }, [undo, redo]);
+
+  // Tauri native file drop handler
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    getCurrentWebview()
+      .onDragDropEvent(async (event) => {
+        if (event.payload.type === "drop") {
+          const paths = event.payload.paths;
+          for (const filePath of paths) {
+            const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+            if (!["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) continue;
+
+            const url = convertFileSrc(filePath);
+            const img = new window.Image();
+            img.src = url;
+            await new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+            });
+            if (!img.naturalWidth) continue;
+
+            const { canvasWidth: cw, canvasHeight: ch } = useCanvasStore.getState();
+            const maxDim = Math.min(cw, ch) * 0.6;
+            let w = img.naturalWidth;
+            let h = img.naturalHeight;
+            if (w > maxDim || h > maxDim) {
+              const ratio = Math.min(maxDim / w, maxDim / h);
+              w = Math.round(w * ratio);
+              h = Math.round(h * ratio);
+            }
+
+            const newImage: CanvasImage = {
+              id: crypto.randomUUID(),
+              src: url,
+              x: cw / 2,
+              y: ch / 2,
+              width: w,
+              height: h,
+              rotation: 0,
+              cornerRadius: 12,
+              flipX: false,
+              flipY: false,
+              shadow: {
+                enabled: true,
+                color: "rgba(0,0,0,0.3)",
+                blur: 20,
+                offsetX: 0,
+                offsetY: 10,
+              },
+              insetBorder: {
+                enabled: false,
+                color: "#ffffff",
+                width: 8,
+              },
+            };
+            useCanvasStore.getState().addImage(newImage);
+          }
+        }
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+
+    return () => {
+      unlisten?.();
+    };
   }, []);
 
-  // File drop handler
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+  // Arrow drag-to-draw: mouse move
+  const handleStageMouseMove = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (!drawingArrowId) return;
+      const stage = e.target.getStage();
+      const pos = stage?.getPointerPosition();
+      if (!pos) return;
 
-    const handleDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
+      const annotations = useCanvasStore.getState().annotations;
+      const arrow = annotations.find((a) => a.id === drawingArrowId);
+      if (!arrow || arrow.type !== "arrow") return;
 
-    const handleDrop = async (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const files = e.dataTransfer?.files;
-      if (!files) return;
+      const endX = pos.x / scale - arrow.x;
+      const endY = pos.y / scale - arrow.y;
+      updateAnnotation(drawingArrowId, {
+        points: [0, 0, endX, endY],
+      });
+    },
+    [drawingArrowId, scale, updateAnnotation],
+  );
 
-      for (const file of Array.from(files)) {
-        if (!file.type.startsWith("image/")) continue;
-        const url = URL.createObjectURL(file);
-        const img = new window.Image();
-        img.src = url;
-        await new Promise<void>((resolve) => {
-          img.onload = () => resolve();
-        });
-
-        const maxDim = Math.min(canvasWidth, canvasHeight) * 0.6;
-        let w = img.naturalWidth;
-        let h = img.naturalHeight;
-        if (w > maxDim || h > maxDim) {
-          const ratio = Math.min(maxDim / w, maxDim / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
-
-        const newImage: CanvasImage = {
-          id: crypto.randomUUID(),
-          src: url,
-          x: canvasWidth / 2,
-          y: canvasHeight / 2,
-          width: w,
-          height: h,
-          rotation: 0,
-          cornerRadius: 12,
-          flipX: false,
-          flipY: false,
-          shadow: {
-            enabled: true,
-            color: "rgba(0,0,0,0.3)",
-            blur: 20,
-            offsetX: 0,
-            offsetY: 10,
-          },
-          insetBorder: {
-            enabled: false,
-            color: "#ffffff",
-            width: 8,
-          },
-        };
-        addImage(newImage);
-      }
-    };
-
-    el.addEventListener("dragover", handleDragOver);
-    el.addEventListener("drop", handleDrop);
-    return () => {
-      el.removeEventListener("dragover", handleDragOver);
-      el.removeEventListener("drop", handleDrop);
-    };
-  }, [addImage, canvasWidth, canvasHeight]);
+  // Arrow drag-to-draw: mouse up
+  const handleStageMouseUp = useCallback(() => {
+    if (drawingArrowId) {
+      setSelectedId(drawingArrowId);
+      setDrawingArrowId(null);
+      setActiveTool("select");
+    }
+  }, [drawingArrowId, setSelectedId, setActiveTool]);
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -174,10 +223,10 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
               width: 120,
               height: 80,
               rotation: 0,
-              fill: fillColor,
+              fill: `${strokeColor}14`,
               stroke: strokeColor,
               strokeWidth,
-              cornerRadius: 0,
+              cornerRadius: 8,
             });
             setActiveTool("select");
             break;
@@ -190,25 +239,26 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
               radiusX: 60,
               radiusY: 40,
               rotation: 0,
-              fill: fillColor,
+              fill: `${strokeColor}14`,
               stroke: strokeColor,
               strokeWidth,
             });
             setActiveTool("select");
             break;
           case "arrow":
+            // Start drag-to-draw
             addAnnotation({
               id,
               type: "arrow",
               x,
               y,
-              points: [0, 0, 120, 0],
+              points: [0, 0, 0, 0],
               rotation: 0,
               stroke: strokeColor,
               strokeWidth,
               curvature: 0,
             });
-            setActiveTool("select");
+            setDrawingArrowId(id);
             break;
           case "text":
             addAnnotation({
@@ -219,10 +269,10 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
               text: "Text",
               fontSize,
               fontFamily: "Inter, system-ui, sans-serif",
-              fill: strokeColor,
+              fill: "#1A1A1A",
               rotation: 0,
-              shadowEnabled: false,
-              shadowColor: "rgba(0,0,0,0.5)",
+              shadowEnabled: true,
+              shadowColor: "rgba(255,255,255,0.8)",
               shadowBlur: 4,
             });
             setActiveTool("select");
@@ -233,7 +283,7 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
               type: "emoji",
               x,
               y,
-              emoji: "\u{1F44D}",
+              emoji: selectedEmoji,
               fontSize: 48,
               rotation: 0,
             });
@@ -265,6 +315,7 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
       fillColor,
       strokeWidth,
       fontSize,
+      selectedEmoji,
       setActiveTool,
     ],
   );
@@ -291,6 +342,8 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           scaleY={scale}
           onClick={handleStageClick}
           onTap={handleStageClick}
+          onMouseMove={handleStageMouseMove}
+          onMouseUp={handleStageMouseUp}
         >
           <BackgroundLayer />
           <ScreenshotLayer />
@@ -299,8 +352,23 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
         </Stage>
       </div>
 
-      {/* Zoom controls */}
+      {/* Zoom and undo controls */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-1.5 py-1 backdrop-blur-sm">
+        <button
+          onClick={undo}
+          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+          title="Undo (Cmd+Z)"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6.69 3L3 13"/></svg>
+        </button>
+        <button
+          onClick={redo}
+          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+          title="Redo (Cmd+Shift+Z)"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6.69 3L21 13"/></svg>
+        </button>
+        <div className="w-px h-4 bg-zinc-800/60 mx-0.5" />
         <button
           onClick={() => setZoom((z) => Math.max(z * 0.8, 0.25))}
           className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"

@@ -1,10 +1,10 @@
 import { Layer, Arrow, Rect, Ellipse, Text, Transformer } from "react-konva";
 import { useCanvasStore, type AnnotationShape } from "../../stores/canvas.store";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import Konva from "konva";
 
 /**
- * Renders all annotation shapes on the canvas.
+ * Renders all annotation shapes on the canvas with professional styling.
  * Supports: arrows, rectangles, ellipses, text, and emoji.
  */
 export default function AnnotationLayer() {
@@ -14,6 +14,7 @@ export default function AnnotationLayer() {
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
   const trRef = useRef<Konva.Transformer>(null);
   const selectedRef = useRef<Konva.Node>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedId && trRef.current && selectedRef.current) {
@@ -49,6 +50,15 @@ export default function AnnotationLayer() {
         radiusY: Math.round(shape.radiusY * scaleY),
         rotation: node.rotation(),
       });
+    } else if (shape.type === "text" || shape.type === "emoji") {
+      // Scale fontSize proportionally so text/emoji doesn't snap back
+      const newFontSize = Math.round(shape.fontSize * Math.max(Math.abs(scaleX), Math.abs(scaleY)));
+      updateAnnotation(shape.id, {
+        x: node.x(),
+        y: node.y(),
+        fontSize: newFontSize,
+        rotation: node.rotation(),
+      });
     } else {
       updateAnnotation(shape.id, {
         x: node.x(),
@@ -61,6 +71,72 @@ export default function AnnotationLayer() {
   const commonDragEnd = (id: string, e: Konva.KonvaEventObject<DragEvent>) => {
     updateAnnotation(id, { x: e.target.x(), y: e.target.y() });
   };
+
+  // Inline text editing via double-click
+  const handleTextDblClick = useCallback(
+    (shape: AnnotationShape & { type: "text" }, node: Konva.Text) => {
+      setEditingTextId(shape.id);
+      node.hide();
+      const layer = node.getLayer();
+      layer?.batchDraw();
+
+      const stage = node.getStage();
+      if (!stage) return;
+
+      const textPosition = node.absolutePosition();
+      const stageBox = stage.container().getBoundingClientRect();
+      const areaPosition = {
+        x: stageBox.left + textPosition.x * stage.scaleX(),
+        y: stageBox.top + textPosition.y * stage.scaleY(),
+      };
+
+      const textarea = document.createElement("textarea");
+      document.body.appendChild(textarea);
+      textarea.value = shape.text;
+      textarea.style.position = "fixed";
+      textarea.style.top = `${areaPosition.y}px`;
+      textarea.style.left = `${areaPosition.x}px`;
+      textarea.style.fontSize = `${shape.fontSize * stage.scaleX()}px`;
+      textarea.style.fontFamily = shape.fontFamily;
+      textarea.style.color = shape.fill;
+      textarea.style.background = "rgba(0,0,0,0.8)";
+      textarea.style.border = "1px solid rgba(255,255,255,0.2)";
+      textarea.style.borderRadius = "4px";
+      textarea.style.padding = "4px 6px";
+      textarea.style.outline = "none";
+      textarea.style.resize = "none";
+      textarea.style.lineHeight = "1.2";
+      textarea.style.zIndex = "10000";
+      textarea.style.minWidth = "60px";
+      textarea.style.minHeight = "30px";
+      textarea.focus();
+      textarea.select();
+
+      const finishEdit = () => {
+        const newText = textarea.value;
+        if (newText && newText !== shape.text) {
+          updateAnnotation(shape.id, { text: newText });
+        }
+        document.body.removeChild(textarea);
+        node.show();
+        layer?.batchDraw();
+        setEditingTextId(null);
+      };
+
+      textarea.addEventListener("blur", finishEdit);
+      textarea.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          textarea.blur();
+        }
+        if (e.key === "Escape") {
+          textarea.value = shape.text;
+          textarea.blur();
+        }
+      });
+    },
+    [updateAnnotation],
+  );
 
   const renderShape = (shape: AnnotationShape) => {
     const isSelected = selectedId === shape.id;
@@ -89,8 +165,11 @@ export default function AnnotationLayer() {
             strokeWidth={shape.strokeWidth}
             fill={shape.stroke}
             tension={shape.curvature}
-            pointerLength={10}
-            pointerWidth={10}
+            pointerLength={shape.strokeWidth * 4}
+            pointerWidth={shape.strokeWidth * 3.5}
+            lineCap="round"
+            lineJoin="round"
+            hitStrokeWidth={12}
           />
         );
       case "rectangle":
@@ -104,6 +183,7 @@ export default function AnnotationLayer() {
             stroke={shape.stroke}
             strokeWidth={shape.strokeWidth}
             cornerRadius={shape.cornerRadius}
+            hitStrokeWidth={10}
           />
         );
       case "ellipse":
@@ -116,6 +196,7 @@ export default function AnnotationLayer() {
             fill={shape.fill}
             stroke={shape.stroke}
             strokeWidth={shape.strokeWidth}
+            hitStrokeWidth={10}
           />
         );
       case "text":
@@ -126,10 +207,23 @@ export default function AnnotationLayer() {
             text={shape.text}
             fontSize={shape.fontSize}
             fontFamily={shape.fontFamily}
+            fontStyle="600"
             fill={shape.fill}
+            padding={4}
             shadowEnabled={shape.shadowEnabled}
             shadowColor={shape.shadowColor}
             shadowBlur={shape.shadowBlur}
+            shadowOffsetX={0}
+            shadowOffsetY={0}
+            visible={editingTextId !== shape.id}
+            onDblClick={(e) => {
+              const node = e.target as Konva.Text;
+              handleTextDblClick(shape, node);
+            }}
+            onDblTap={(e) => {
+              const node = e.target as Konva.Text;
+              handleTextDblClick(shape, node);
+            }}
           />
         );
       case "emoji":
@@ -155,7 +249,7 @@ export default function AnnotationLayer() {
           rotateEnabled
           enabledAnchors={
             selectedAnnotation.type === "arrow"
-              ? []
+              ? ["middle-left", "middle-right"]
               : ["top-left", "top-right", "bottom-left", "bottom-right"]
           }
         />

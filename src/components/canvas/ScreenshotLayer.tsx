@@ -20,8 +20,8 @@ export default function ScreenshotLayer() {
   return (
     <Layer>
       {images.map((img) => {
-        // Scale image to fit within padded area while preserving aspect ratio
-        const scale = Math.min(availW / img.width, availH / img.height, 1);
+        // Scale image to fit within padded area — no cap at 1 so padding always constrains
+        const scale = Math.min(availW / img.width, availH / img.height);
         const displayW = Math.round(img.width * scale);
         const displayH = Math.round(img.height * scale);
 

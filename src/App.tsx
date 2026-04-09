@@ -152,19 +152,12 @@ export default function App() {
     }
   }, [captureState, lastCapturePath, setCaptureState]);
 
-  // Undo/redo keyboard shortcuts
+  // Delete selected element (undo/redo is handled in CanvasStage)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        useCanvasStore.temporal.getState().undo();
-      }
-      if (mod && e.key === "z" && e.shiftKey) {
-        e.preventDefault();
-        useCanvasStore.temporal.getState().redo();
-      }
       if (e.key === "Delete" || e.key === "Backspace") {
+        const target = e.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
         const { selectedId } = useCanvasStore.getState();
         if (selectedId) {
           e.preventDefault();

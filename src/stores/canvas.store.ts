@@ -253,11 +253,16 @@ export const useCanvasStore = create<CanvasState & CanvasActions>()(
         }),
     }),
     {
-      // Exclude selectedId from undo history — selection is UI state, not data
-      partialize: (state) => {
-        const { selectedId: _, ...rest } = state;
-        return rest;
-      },
+      // Only include data fields in undo history — exclude selectedId and all action functions
+      partialize: (state) => ({
+        canvasWidth: state.canvasWidth,
+        canvasHeight: state.canvasHeight,
+        padding: state.padding,
+        background: state.background,
+        images: state.images,
+        annotations: state.annotations,
+        privacyRegions: state.privacyRegions,
+      }),
       limit: 50,
     },
   ),

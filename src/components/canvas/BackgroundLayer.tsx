@@ -5,17 +5,19 @@ import Konva from "konva";
 
 /**
  * Renders the canvas background: solid color, gradient, or image.
- * Supports blur and grain effects via Konva filters.
+ * Supports blur effect via Konva filters.
  */
 export default function BackgroundLayer() {
   const { canvasWidth, canvasHeight, background } = useCanvasStore();
   const rectRef = useRef<Konva.Rect>(null);
+  const imgRef = useRef<Konva.Image>(null);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
 
   // Load background image if type is "image"
   useEffect(() => {
     if (background.type === "image" && background.imageSrc) {
       const img = new window.Image();
+      img.crossOrigin = "anonymous";
       img.src = background.imageSrc;
       img.onload = () => setBgImage(img);
       img.onerror = () => console.error("[Screenshots] Failed to load background image");
@@ -24,7 +26,7 @@ export default function BackgroundLayer() {
     }
   }, [background.type, background.imageSrc]);
 
-  // Apply blur filter and refresh cache when background changes
+  // Apply blur filter to gradient/solid rect
   useEffect(() => {
     const node = rectRef.current;
     if (!node) return;
@@ -37,6 +39,20 @@ export default function BackgroundLayer() {
       node.filters([]);
     }
   }, [background]);
+
+  // Apply blur filter to background image
+  useEffect(() => {
+    const node = imgRef.current;
+    if (!node) return;
+    node.clearCache();
+    if (background.blur > 0) {
+      node.filters([Konva.Filters.Blur]);
+      node.blurRadius(background.blur);
+      node.cache();
+    } else {
+      node.filters([]);
+    }
+  }, [background.blur, bgImage, canvasWidth, canvasHeight]);
 
   const gradientFill = () => {
     const angle = (background.gradientAngle * Math.PI) / 180;
@@ -82,6 +98,7 @@ export default function BackgroundLayer() {
     <Layer listening={false}>
       {background.type === "image" && bgImage ? (
         <KonvaImage
+          ref={imgRef}
           image={bgImage}
           x={0}
           y={0}
