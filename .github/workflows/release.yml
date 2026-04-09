@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: --target aarch64-apple-darwin
+            label: macOS-arm64
+          - os: macos-latest
+            args: --target x86_64-apple-darwin
+            label: macOS-x64
+          - os: ubuntu-22.04
+            args: ''
+            label: Linux
+          - os: windows-latest
+            args: ''
+            label: Windows
+
+    name: Build (${{ matrix.label }})
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libxdo-dev
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build and release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'OpenShots ${{ github.ref_name }}'
+          releaseBody: |
+            Download the installer for your platform below.
+
+            **macOS:** Download the `.dmg` file, open it, and drag OpenShots to Applications.
+            **Windows:** Download and run the `.msi` installer.
+            **Linux:** Download the `.AppImage` (make executable with `chmod +x`) or `.deb` package.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
