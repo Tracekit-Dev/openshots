@@ -9,6 +9,9 @@ import AnnotationLayer from "./AnnotationLayer";
 import PrivacyLayer from "./PrivacyLayer";
 import CropOverlay, { type CropRect } from "./CropOverlay";
 import ContextMenu from "./ContextMenu";
+import RemovalOverlay from "./RemovalOverlay";
+import { removeBackground } from "../../lib/background-removal/background-removal";
+import type { ProgressInfo } from "../../lib/background-removal/types";
 
 interface CanvasStageProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -25,6 +28,14 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   const [cropAspectRatio, setCropAspectRatio] = useState<number | null>(null);
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  // Background removal state
+  const [removalState, setRemovalState] = useState<{
+    imageId: string | null;
+    isProcessing: boolean;
+    progress: number;
+    status: string;
+    error: string | null;
+  }>({ imageId: null, isProcessing: false, progress: 0, status: "", error: null });
 
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
@@ -201,6 +212,71 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [undo, redo, isCropActive, handleCropConfirm, handleCropCancel, selectedId, reorderElement]);
+
+  // Background removal handler
+  const handleRemoveBackground = useCallback(async (elementId: string) => {
+    const image = useCanvasStore.getState().images.find((img) => img.id === elementId);
+    if (!image) return;
+
+    setRemovalState({
+      imageId: elementId,
+      isProcessing: true,
+      progress: 0,
+      status: "loading",
+      error: null,
+    });
+
+    try {
+      // Convert asset:// URLs to data URL for the worker
+      let imageDataUrl = image.src;
+      if (
+        imageDataUrl.startsWith("asset://") ||
+        imageDataUrl.startsWith("https://asset.localhost") ||
+        imageDataUrl.startsWith("http://asset.localhost")
+      ) {
+        const tmpImg = new window.Image();
+        tmpImg.crossOrigin = "anonymous";
+        tmpImg.src = imageDataUrl;
+        imageDataUrl = await new Promise<string>((resolve, reject) => {
+          tmpImg.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = tmpImg.naturalWidth;
+            canvas.height = tmpImg.naturalHeight;
+            const ctx = canvas.getContext("2d")!;
+            ctx.drawImage(tmpImg, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+          };
+          tmpImg.onerror = () => reject(new Error("Failed to load image for background removal"));
+        });
+      }
+
+      const resultDataUrl = await removeBackground(
+        imageDataUrl,
+        (info: ProgressInfo) => {
+          setRemovalState((prev) => ({
+            ...prev,
+            progress: info.progress ?? prev.progress,
+            status: info.status,
+          }));
+        },
+      );
+
+      useCanvasStore.getState().updateImage(elementId, { src: resultDataUrl });
+      setRemovalState({ imageId: null, isProcessing: false, progress: 0, status: "", error: null });
+    } catch (err) {
+      setRemovalState((prev) => ({
+        ...prev,
+        isProcessing: false,
+        error: err instanceof Error ? err.message : "Background removal failed",
+      }));
+    }
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    if (removalState.imageId) {
+      handleRemoveBackground(removalState.imageId);
+    }
+  }, [removalState.imageId, handleRemoveBackground]);
 
   // Drag-and-drop is handled in App.tsx (always mounted)
 
@@ -471,8 +547,38 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           y={contextMenu.y}
           elementId={selectedId}
           onClose={() => setContextMenu(null)}
+          onRemoveBackground={handleRemoveBackground}
         />
       )}
+
+      {/* Background removal overlay */}
+      <RemovalOverlay
+        imageId={removalState.imageId}
+        isProcessing={removalState.isProcessing}
+        progress={removalState.progress}
+        status={removalState.status}
+        error={removalState.error}
+        onRetry={handleRetry}
+        imageRect={(() => {
+          if (!removalState.imageId) return undefined;
+          const img = images.find((i) => i.id === removalState.imageId);
+          if (!img) return undefined;
+          const bw = img.insetBorder.enabled ? img.insetBorder.width : 0;
+          const totalW = (img.width + bw * 2) * scale;
+          const totalH = (img.height + bw * 2) * scale;
+          const stageEl = containerRef.current?.querySelector("canvas");
+          const stageRect = stageEl?.getBoundingClientRect();
+          if (!stageRect) return undefined;
+          const cx = stageRect.left + img.x * scale;
+          const cy = stageRect.top + img.y * scale;
+          return {
+            x: cx - totalW / 2,
+            y: cy - totalH / 2,
+            width: totalW,
+            height: totalH,
+          };
+        })()}
+      />
 
       {/* Zoom and undo controls */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-1.5 py-1 backdrop-blur-sm">
