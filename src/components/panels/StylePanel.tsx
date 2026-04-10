@@ -1,4 +1,5 @@
 import { useCanvasStore } from "../../stores/canvas.store";
+import { useToolStore, COLOR_PRESETS } from "../../stores/tool.store";
 import { extractDominantColor } from "../../lib/colorAnalysis";
 import { computeFanLayout } from "../../lib/fanLayout";
 
@@ -13,8 +14,14 @@ export default function StylePanel() {
   const privacyRegions = useCanvasStore((s) => s.privacyRegions);
   const updatePrivacyRegion = useCanvasStore((s) => s.updatePrivacyRegion);
 
+  const annotations = useCanvasStore((s) => s.annotations);
+  const updateAnnotation = useCanvasStore((s) => s.updateAnnotation);
+  const setStrokeWidth = useToolStore((s) => s.setStrokeWidth);
+  const setStrokeColor = useToolStore((s) => s.setStrokeColor);
+
   const selected = images.find((img) => img.id === selectedId);
   const selectedPrivacy = privacyRegions.find((r) => r.id === selectedId);
+  const selectedAnnotation = annotations.find((a) => a.id === selectedId);
 
   const handleFanLayout = () => {
     const positions = computeFanLayout(images.length, canvasWidth, canvasHeight);
@@ -283,6 +290,132 @@ export default function StylePanel() {
               {selectedPrivacy.fill || "default"}
             </span>
           </div>
+        </>
+      )}
+
+      {/* Annotation property controls */}
+      {selectedAnnotation && (
+        <>
+          <div className="border-t border-zinc-800/60 pt-3 mt-3">
+            <p className="text-[11px] font-medium text-zinc-500 tracking-wide mb-2">Annotation</p>
+          </div>
+
+          {/* Color row */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] text-zinc-500">Color</label>
+            <div className="flex flex-wrap gap-1">
+              {COLOR_PRESETS.map((color) => {
+                const currentColor = selectedAnnotation.type === "text" || selectedAnnotation.type === "callout"
+                  ? (selectedAnnotation as { fill: string }).fill
+                  : (selectedAnnotation as { stroke: string }).stroke;
+                return (
+                  <button
+                    key={color}
+                    onClick={() => {
+                      setStrokeColor(color);
+                      switch (selectedAnnotation.type) {
+                        case "arrow":
+                          updateAnnotation(selectedAnnotation.id, { stroke: color });
+                          break;
+                        case "rectangle":
+                          updateAnnotation(selectedAnnotation.id, { stroke: color, fill: `${color}14` });
+                          break;
+                        case "ellipse":
+                          updateAnnotation(selectedAnnotation.id, { stroke: color, fill: `${color}14` });
+                          break;
+                        case "text":
+                          updateAnnotation(selectedAnnotation.id, { fill: color });
+                          break;
+                        case "callout":
+                          updateAnnotation(selectedAnnotation.id, { fill: color });
+                          break;
+                      }
+                    }}
+                    className={`w-6 h-6 rounded-md border transition-all ${
+                      currentColor === color ? "border-white scale-110" : "border-zinc-700 hover:border-zinc-500"
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Stroke Width presets */}
+          {(selectedAnnotation.type === "arrow" || selectedAnnotation.type === "rectangle" || selectedAnnotation.type === "ellipse") && (
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-zinc-500 w-10">Stroke</label>
+              <div className="flex gap-1">
+                {[1, 2, 4, 8].map((w) => (
+                  <button
+                    key={w}
+                    onClick={() => {
+                      updateAnnotation(selectedAnnotation.id, { strokeWidth: w });
+                      setStrokeWidth(w);
+                    }}
+                    className={`px-3 py-1 text-[12px] rounded-md transition-colors ${
+                      (selectedAnnotation as { strokeWidth: number }).strokeWidth === w
+                        ? "bg-zinc-100 text-zinc-900"
+                        : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
+                    }`}
+                  >
+                    {w}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Dash Pattern presets */}
+          {(selectedAnnotation.type === "arrow" || selectedAnnotation.type === "rectangle" || selectedAnnotation.type === "ellipse") && (
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-zinc-500 w-10">Dash</label>
+              <div className="flex gap-1">
+                {([
+                  { label: "Solid", value: undefined },
+                  { label: "Dashed", value: [10, 5] },
+                  { label: "Dotted", value: [2, 6] },
+                ] as const).map((preset) => {
+                  const currentDash = (selectedAnnotation as { dash?: number[] }).dash;
+                  const isActive = preset.value === undefined
+                    ? !currentDash || currentDash.length === 0
+                    : JSON.stringify(currentDash) === JSON.stringify(preset.value);
+                  return (
+                    <button
+                      key={preset.label}
+                      onClick={() => updateAnnotation(selectedAnnotation.id, { dash: preset.value as number[] | undefined })}
+                      className={`px-2 py-1 text-[12px] rounded-md transition-colors ${
+                        isActive
+                          ? "bg-zinc-100 text-zinc-900"
+                          : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Font Size -- text annotations only */}
+          {selectedAnnotation.type === "text" && (
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-zinc-500 w-10">Size</label>
+              <input
+                type="range"
+                min={10}
+                max={120}
+                step={2}
+                value={(selectedAnnotation as { fontSize: number }).fontSize}
+                onChange={(e) => updateAnnotation(selectedAnnotation.id, { fontSize: Number(e.target.value) })}
+                className="flex-1 accent-zinc-400"
+              />
+              <span className="text-[11px] text-zinc-500 w-7 text-right">
+                {(selectedAnnotation as { fontSize: number }).fontSize}
+              </span>
+            </div>
+          )}
         </>
       )}
     </div>
