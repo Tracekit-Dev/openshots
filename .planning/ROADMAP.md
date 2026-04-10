@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** - Phases 1-4 (shipped 2026-04-09)
-- 🚧 **v1.1 Feature Completeness** - Phases 5-8 (in progress)
+- 🚧 **v1.1 Feature Completeness** - Phases 5-10 (in progress)
 
 ## Phases
 
@@ -23,6 +23,8 @@
 - [ ] **Phase 6: Complete Editor** - Crop tool, snap guides, annotation editing, blur-at-export, and advanced annotation types
 - [ ] **Phase 7: AI Background Removal** - On-device background removal with RMBG-1.4, Web Worker, and WebGPU/WASM fallback
 - [ ] **Phase 8: CLI and Share** - Terminal batch processing and OS share sheet integration
+- [ ] **Phase 9: Project Files** - Save/reopen editable projects with annotations as separate objects
+- [ ] **Phase 10: UI/UX Polish** - Agent-driven UI audit against professional apps (Linear.app, CleanShot aesthetic)
 
 ## Phase Details
 
@@ -75,7 +77,7 @@
 ### Phase 6: Complete Editor
 **Goal**: Users have a full-featured editing workflow with crop, alignment, annotation editing, advanced annotation types, and trustworthy privacy blur in exports
 **Depends on**: Phase 5
-**Requirements**: EDIT-01, EDIT-02, EDIT-03, EDIT-04, EDIT-05, ANNOT-01, ANNOT-02, ANNOT-03, ANNOT-04
+**Requirements**: EDIT-01, EDIT-02, EDIT-03, EDIT-04, EDIT-05, EDIT-06, ANNOT-01, ANNOT-02, ANNOT-03, ANNOT-04
 **Success Criteria** (what must be TRUE):
   1. User can draw a crop region on an image and confirm with Enter to crop it
   2. User can constrain crop to preset aspect ratios (16:9, 4:3, 1:1) or use freeform
@@ -84,13 +86,14 @@
   5. User can select any existing annotation and change its color, stroke width, font size, dash pattern, and style via a property panel
   6. User can place numbered step callouts that auto-increment (1, 2, 3...) on the canvas
   7. Exported images contain actual pixel-level blur/pixelate in privacy regions (not just visual overlays)
+  8. User can reorder canvas elements via Bring to Front, Send to Back, Bring Forward, Send Backward
 **Plans**: 5 plans
 Plans:
-- [ ] 06-01-PLAN.md -- Store types + callout tool + dash field (ANNOT-02, ANNOT-03, ANNOT-04)
+- [x] 06-01-PLAN.md -- Store types + callout tool + dash field (ANNOT-02, ANNOT-03, ANNOT-04)
 - [ ] 06-02-PLAN.md -- Annotation property panel + canvas size inputs (ANNOT-01, ANNOT-03, ANNOT-04, EDIT-03)
 - [ ] 06-03-PLAN.md -- Snap alignment guides (EDIT-04)
 - [ ] 06-04-PLAN.md -- Crop tool with aspect ratio constraints (EDIT-01, EDIT-02)
-- [ ] 06-05-PLAN.md -- Rust blur/pixelate at export (EDIT-05)
+- [x] 06-05-PLAN.md -- Rust blur/pixelate at export (EDIT-05)
 **UI hint**: yes
 
 ### Phase 7: AI Background Removal
@@ -114,10 +117,33 @@ Plans:
   3. User can share an exported screenshot to OS share sheet (AirDrop, Messages, social apps) from the export panel
 **Plans**: TBD
 
+### Phase 9: Project Files
+**Goal**: Users can save canvas state as an editable project file and reopen it later to tweak annotations, backgrounds, and layout — the CleanShot killer feature
+**Depends on**: Phase 6
+**Requirements**: PROJ-01, PROJ-02, PROJ-03
+**Success Criteria** (what must be TRUE):
+  1. User can save the current canvas as an `.openshots` project file that preserves all layers, annotations, images, and settings as separate editable objects
+  2. User can reopen a saved `.openshots` file and see the full canvas restored with all annotations individually selectable and editable
+  3. User can export a flat image from a project file at any time (project file is the source of truth, export is a render)
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 10: UI/UX Polish
+**Goal**: Every panel, control, and interaction in the app meets professional desktop app standards (Linear.app / CleanShot aesthetic) — clean, minimal, consistent
+**Depends on**: Phase 6
+**Requirements**: UX-01, UX-02, UX-03
+**Success Criteria** (what must be TRUE):
+  1. Agent-driven UI audit scores all panels (property panel, tool panel, background panel, export panel) at 8/10+ against Linear.app / CleanShot design benchmarks
+  2. All interactive controls have consistent spacing (8pt grid), hover/active states, keyboard navigation, and smooth transitions
+  3. Typography, color, and iconography are consistent across every panel with no visual outliers
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
-**Execution Order:** Phase 5 -> Phase 6 -> Phase 7 -> Phase 8
+**Execution Order:** Phase 5 -> Phase 6 -> Phase 7 -> Phase 8 -> Phase 9 -> Phase 10
 (Phase 7 depends on Phase 5 only; can run in parallel with Phase 6 if desired)
+(Phase 9 and 10 depend on Phase 6; Phase 10 should run last as a final polish pass)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -129,3 +155,5 @@ Plans:
 | 6. Complete Editor | v1.1 | 0/5 | Planned | - |
 | 7. AI Background Removal | v1.1 | 0/? | Not started | - |
 | 8. CLI and Share | v1.1 | 0/? | Not started | - |
+| 9. Project Files | v1.1 | 0/? | Not started | - |
+| 10. UI/UX Polish | v1.1 | 0/? | Not started | - |

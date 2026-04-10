@@ -37,6 +37,8 @@ Requirements for v1.1 Feature Completeness milestone. Each maps to roadmap phase
 - [ ] **EDIT-04**: User sees Figma-style snap/alignment guides when dragging images on canvas
 - [ ] **EDIT-05**: User's blur/pixelate privacy regions are applied to actual pixel data at export (Rust-side processing)
 
+- [ ] **EDIT-06**: User can reorder canvas elements (Bring to Front, Send to Back, Bring Forward, Send Backward) via context menu or keyboard shortcuts
+
 ### Annotations
 
 - [ ] **ANNOT-01**: User can select an existing annotation and edit its color, stroke width, and font via a property panel
@@ -57,6 +59,18 @@ Requirements for v1.1 Feature Completeness milestone. Each maps to roadmap phase
 - [ ] **SHARE-01**: User can share exported screenshot to OS-level share sheet (social/messaging)
 - [x] **DND-01**: User can reliably drag-and-drop image files onto the canvas across macOS, Windows, and Linux
 
+### Project Files
+
+- [ ] **PROJ-01**: User can save the current canvas as an `.openshots` project file preserving all layers, annotations, images, and settings as separate editable objects
+- [ ] **PROJ-02**: User can reopen a saved `.openshots` file and see the full canvas restored with all annotations individually selectable and editable
+- [ ] **PROJ-03**: User can export a flat image from a project file at any time (project is source of truth, export is a render)
+
+### UI/UX Polish
+
+- [ ] **UX-01**: Agent-driven UI audit scores all panels at 8/10+ against Linear.app / CleanShot design benchmarks
+- [ ] **UX-02**: All interactive controls have consistent spacing (8pt grid), hover/active states, keyboard navigation, and smooth transitions
+- [ ] **UX-03**: Typography, color, and iconography are consistent across every panel with no visual outliers
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -64,6 +78,9 @@ Deferred to future release. Tracked but not in current roadmap.
 ### Capture
 
 - **CAPT-07**: User can capture a scrolling page (long screenshot)
+- **CAPT-08**: User can set a self-timer delay (3s, 5s, 10s) before screenshot capture
+- **CAPT-09**: User can automatically scale down Retina/HiDPI screenshots to standard resolution on import
+- **CAPT-10**: User can use a crosshair overlay mode for pixel-precise screenshot alignment
 
 ### Composition
 
@@ -131,10 +148,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-01 | Phase 8 | Pending |
 | CLI-02 | Phase 8 | Pending |
 | SHARE-01 | Phase 8 | Pending |
+| EDIT-06 | Phase 6 | Pending |
+| PROJ-01 | Phase 9 | Pending |
+| PROJ-02 | Phase 9 | Pending |
+| PROJ-03 | Phase 9 | Pending |
+| UX-01 | Phase 10 | Pending |
+| UX-02 | Phase 10 | Pending |
+| UX-03 | Phase 10 | Pending |
 
 **Coverage:**
-- v1.1 requirements: 20 total
-- Mapped to phases: 20
+- v1.1 requirements: 27 total
+- Mapped to phases: 27
 - Unmapped: 0
 
 ---
