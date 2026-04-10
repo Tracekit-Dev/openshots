@@ -136,6 +136,21 @@ export default function StylePanel() {
                   />
                 </div>
                 <div className="flex items-center gap-2">
+                  <label className="text-[11px] text-zinc-500 w-14">Offset X</label>
+                  <input
+                    type="range"
+                    min={-40}
+                    max={40}
+                    value={selected.shadow.offsetX}
+                    onChange={(e) =>
+                      updateImage(selected.id, {
+                        shadow: { ...selected.shadow, offsetX: Number(e.target.value) },
+                      })
+                    }
+                    className="flex-1 accent-zinc-400"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
                   <label className="text-[11px] text-zinc-500 w-14">Offset Y</label>
                   <input
                     type="range"
