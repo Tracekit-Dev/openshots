@@ -9,7 +9,8 @@ export type ToolMode =
   | "emoji"
   | "blur"
   | "pixelate"
-  | "crop";
+  | "crop"
+  | "callout";
 
 // Professional annotation color palette (desaturated, CleanShot X style)
 export const COLOR_PRESETS = [
