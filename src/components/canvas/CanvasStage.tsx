@@ -224,22 +224,6 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           });
           setActiveTool("select");
           break;
-        case "callout": {
-          const annotations = useCanvasStore.getState().annotations;
-          const existingCallouts = annotations.filter((a) => a.type === "callout");
-          addAnnotation({
-            id,
-            type: "callout",
-            x,
-            y,
-            number: existingCallouts.length + 1,
-            fill: strokeColor,
-            textColor: "#ffffff",
-            rotation: 0,
-          });
-          setActiveTool("select");
-          break;
-        }
         case "blur":
         case "pixelate":
           addPrivacyRegion({

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useCanvasStore } from "../../stores/canvas.store";
-import { exportCanvas, type ExportFormat, type PrivacyRegionExport } from "../../ipc/export";
+import { exportCanvas, type ExportFormat } from "../../ipc/export";
 import Konva from "konva";
 
 interface ExportPanelProps {
@@ -15,7 +15,6 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
   const [lastExport, setLastExport] = useState<string | null>(null);
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
-  const privacyRegions = useCanvasStore((s) => s.privacyRegions);
 
   const handleExport = async () => {
     const stage = stageRef.current;
@@ -47,22 +46,11 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
       ctx.drawImage(img, 0, 0, outW, outH);
       const imageData = ctx.getImageData(0, 0, outW, outH);
 
-      // Scale privacy region coordinates from canvas space to export pixel space
-      const exportScale = outW / canvasWidth;
-      const scaledRegions: PrivacyRegionExport[] = privacyRegions.map((r) => ({
-        region_type: r.type,
-        x: Math.round(r.x * exportScale),
-        y: Math.round(r.y * exportScale),
-        width: Math.round(r.width * exportScale),
-        height: Math.round(r.height * exportScale),
-        intensity: r.intensity,
-      }));
-
       const result = await exportCanvas(
         new Uint8Array(imageData.data.buffer),
         outW,
         outH,
-        { format, quality, scale: 1, privacyRegions: scaledRegions.length > 0 ? scaledRegions : undefined },
+        { format, quality, scale: 1 },
       );
 
       if (result) setLastExport(result);

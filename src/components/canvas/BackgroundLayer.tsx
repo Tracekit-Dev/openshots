@@ -2,7 +2,6 @@ import { Rect, Image as KonvaImage, Layer } from "react-konva";
 import { useCanvasStore } from "../../stores/canvas.store";
 import { useEffect, useRef, useState } from "react";
 import Konva from "konva";
-import type { Filter } from "konva/lib/Node";
 
 /**
  * Renders the canvas background: solid color, gradient, or image.
@@ -27,49 +26,33 @@ export default function BackgroundLayer() {
     }
   }, [background.type, background.imageSrc]);
 
-  // Apply blur and/or grain filter to gradient/solid rect
+  // Apply blur filter to gradient/solid rect
   useEffect(() => {
     const node = rectRef.current;
     if (!node) return;
     node.clearCache();
-    const filters: Filter[] = [];
     if (background.blur > 0) {
-      filters.push(Konva.Filters.Blur);
-    }
-    if (background.grain > 0) {
-      filters.push(Konva.Filters.Noise);
-    }
-    if (filters.length > 0) {
-      node.filters(filters);
-      if (background.blur > 0) node.blurRadius(background.blur);
-      if (background.grain > 0) node.noise(background.grain / 100);
+      node.filters([Konva.Filters.Blur]);
+      node.blurRadius(background.blur);
       node.cache();
     } else {
       node.filters([]);
     }
   }, [background]);
 
-  // Apply blur and/or grain filter to background image
+  // Apply blur filter to background image
   useEffect(() => {
     const node = imgRef.current;
     if (!node) return;
     node.clearCache();
-    const filters: Filter[] = [];
     if (background.blur > 0) {
-      filters.push(Konva.Filters.Blur);
-    }
-    if (background.grain > 0) {
-      filters.push(Konva.Filters.Noise);
-    }
-    if (filters.length > 0) {
-      node.filters(filters);
-      if (background.blur > 0) node.blurRadius(background.blur);
-      if (background.grain > 0) node.noise(background.grain / 100);
+      node.filters([Konva.Filters.Blur]);
+      node.blurRadius(background.blur);
       node.cache();
     } else {
       node.filters([]);
     }
-  }, [background.blur, background.grain, bgImage, canvasWidth, canvasHeight]);
+  }, [background.blur, bgImage, canvasWidth, canvasHeight]);
 
   const gradientFill = () => {
     const angle = (background.gradientAngle * Math.PI) / 180;

@@ -3,20 +3,10 @@ import { save } from "@tauri-apps/plugin-dialog";
 
 export type ExportFormat = "png" | "jpeg" | "webp";
 
-export interface PrivacyRegionExport {
-  region_type: "blur" | "pixelate";
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  intensity: number;
-}
-
 export interface ExportOptions {
   format: ExportFormat;
   quality: number;
   scale: number;
-  privacyRegions?: PrivacyRegionExport[];
 }
 
 const FORMAT_FILTERS: Record<ExportFormat, { name: string; extensions: string[] }[]> = {
@@ -49,6 +39,5 @@ export async function exportCanvas(
     format: options.format,
     quality: options.quality,
     scale: options.scale,
-    privacyRegions: options.privacyRegions ?? null,
   });
 }

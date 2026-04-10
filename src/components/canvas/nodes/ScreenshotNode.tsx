@@ -58,6 +58,27 @@ export default function ScreenshotNode({ data, isSelected }: ScreenshotNodeProps
 
   return (
     <>
+      {/* Shadow — rendered as a separate group OUTSIDE the main group
+          so it isn't clipped or affected by the image group structure */}
+      {data.shadow.enabled && (
+        <Rect
+          x={data.x - totalW / 2 + bw}
+          y={data.y - totalH / 2 + bw}
+          width={data.width}
+          height={data.height}
+          cornerRadius={data.cornerRadius}
+          fill="#000"
+          opacity={0}
+          shadowEnabled
+          shadowColor={data.shadow.color}
+          shadowBlur={data.shadow.blur}
+          shadowOffsetX={data.shadow.offsetX}
+          shadowOffsetY={data.shadow.offsetY}
+          shadowOpacity={1}
+          listening={false}
+        />
+      )}
+
       <Group
         ref={groupRef}
         x={data.x}
@@ -67,13 +88,6 @@ export default function ScreenshotNode({ data, isSelected }: ScreenshotNodeProps
         rotation={data.rotation}
         offsetX={totalW / 2}
         offsetY={totalH / 2}
-        // Shadow — Group-level props follow the Group's affine transform automatically (rotation, drag)
-        shadowEnabled={data.shadow.enabled}
-        shadowColor={data.shadow.color}
-        shadowBlur={data.shadow.blur}
-        shadowOffsetX={data.shadow.offsetX}
-        shadowOffsetY={data.shadow.offsetY}
-        shadowOpacity={1}
         draggable
         onClick={() => setSelectedId(data.id)}
         onTap={() => setSelectedId(data.id)}

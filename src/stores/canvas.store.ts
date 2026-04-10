@@ -33,8 +33,7 @@ export type AnnotationType =
   | "rectangle"
   | "ellipse"
   | "text"
-  | "emoji"
-  | "callout";
+  | "emoji";
 
 export interface AnnotationBase {
   id: string;
@@ -50,7 +49,6 @@ export interface ArrowAnnotation extends AnnotationBase {
   stroke: string;
   strokeWidth: number;
   curvature: number;
-  dash?: number[];
 }
 
 export interface RectAnnotation extends AnnotationBase {
@@ -61,7 +59,6 @@ export interface RectAnnotation extends AnnotationBase {
   stroke: string;
   strokeWidth: number;
   cornerRadius: number;
-  dash?: number[];
 }
 
 export interface EllipseAnnotation extends AnnotationBase {
@@ -71,7 +68,6 @@ export interface EllipseAnnotation extends AnnotationBase {
   fill: string;
   stroke: string;
   strokeWidth: number;
-  dash?: number[];
 }
 
 export interface TextAnnotation extends AnnotationBase {
@@ -91,20 +87,12 @@ export interface EmojiAnnotation extends AnnotationBase {
   fontSize: number;
 }
 
-export interface CalloutAnnotation extends AnnotationBase {
-  type: "callout";
-  number: number;
-  fill: string;
-  textColor: string;
-}
-
 export type AnnotationShape =
   | ArrowAnnotation
   | RectAnnotation
   | EllipseAnnotation
   | TextAnnotation
-  | EmojiAnnotation
-  | CalloutAnnotation;
+  | EmojiAnnotation;
 
 export interface PrivacyRegion {
   id: string;

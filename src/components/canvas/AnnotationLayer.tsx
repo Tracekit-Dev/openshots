@@ -1,4 +1,4 @@
-import { Layer, Arrow, Rect, Ellipse, Text, Circle, Group, Transformer } from "react-konva";
+import { Layer, Arrow, Rect, Ellipse, Text, Transformer } from "react-konva";
 import { useCanvasStore, type AnnotationShape } from "../../stores/canvas.store";
 import { useRef, useEffect, useState, useCallback } from "react";
 import Konva from "konva";
@@ -165,7 +165,6 @@ export default function AnnotationLayer() {
             strokeWidth={shape.strokeWidth}
             fill={shape.stroke}
             tension={shape.curvature}
-            dash={shape.dash}
             pointerLength={shape.strokeWidth * 4}
             pointerWidth={shape.strokeWidth * 3.5}
             lineCap="round"
@@ -184,7 +183,6 @@ export default function AnnotationLayer() {
             stroke={shape.stroke}
             strokeWidth={shape.strokeWidth}
             cornerRadius={shape.cornerRadius}
-            dash={shape.dash}
             hitStrokeWidth={10}
           />
         );
@@ -198,31 +196,8 @@ export default function AnnotationLayer() {
             fill={shape.fill}
             stroke={shape.stroke}
             strokeWidth={shape.strokeWidth}
-            dash={shape.dash}
             hitStrokeWidth={10}
           />
-        );
-      case "callout":
-        return (
-          <Group key={shape.id} {...common}>
-            <Circle
-              radius={18}
-              fill={shape.fill}
-            />
-            <Text
-              text={String(shape.number)}
-              fontSize={14}
-              fontFamily="-apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif"
-              fontStyle="500"
-              fill={shape.textColor || "#ffffff"}
-              align="center"
-              verticalAlign="middle"
-              width={36}
-              height={36}
-              offsetX={18}
-              offsetY={18}
-            />
-          </Group>
         );
       case "text":
         return (
