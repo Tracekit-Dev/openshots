@@ -13,6 +13,7 @@ const TOOLS: { mode: ToolMode; label: string; shortcut: string }[] = [
   { mode: "emoji", label: "Emoji", shortcut: "M" },
   { mode: "blur", label: "Blur", shortcut: "B" },
   { mode: "pixelate", label: "Pixel", shortcut: "P" },
+  { mode: "crop", label: "Crop", shortcut: "C" },
 ];
 
 export default function ToolPanel() {

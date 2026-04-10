@@ -7,6 +7,7 @@ import BackgroundLayer from "./BackgroundLayer";
 import ScreenshotLayer from "./ScreenshotLayer";
 import AnnotationLayer from "./AnnotationLayer";
 import PrivacyLayer from "./PrivacyLayer";
+import CropOverlay, { type CropRect } from "./CropOverlay";
 
 interface CanvasStageProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -18,10 +19,16 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   const [zoom, setZoom] = useState(1);
   // Arrow drag-to-draw state
   const [drawingArrowId, setDrawingArrowId] = useState<string | null>(null);
+  // Crop state
+  const [cropRect, setCropRect] = useState<CropRect | null>(null);
+  const [cropAspectRatio, setCropAspectRatio] = useState<number | null>(null);
 
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
+  const images = useCanvasStore((s) => s.images);
+  const selectedId = useCanvasStore((s) => s.selectedId);
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
+  const updateImage = useCanvasStore((s) => s.updateImage);
   const addAnnotation = useCanvasStore((s) => s.addAnnotation);
   const updateAnnotation = useCanvasStore((s) => s.updateAnnotation);
   const addPrivacyRegion = useCanvasStore((s) => s.addPrivacyRegion);
@@ -36,6 +43,72 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   // Undo/redo
   const undo = useCallback(() => useCanvasStore.temporal.getState().undo(), []);
   const redo = useCallback(() => useCanvasStore.temporal.getState().redo(), []);
+
+  // Crop mode detection
+  const selectedImage = images.find((img) => img.id === selectedId);
+  const isCropActive = activeTool === "crop" && selectedImage != null;
+
+  // Initialize crop rect when entering crop mode
+  useEffect(() => {
+    if (isCropActive && selectedImage && !cropRect) {
+      const bw = selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width : 0;
+      const totalW = selectedImage.width + bw * 2;
+      const totalH = selectedImage.height + bw * 2;
+      const imgLeft = selectedImage.x - totalW / 2;
+      const imgTop = selectedImage.y - totalH / 2;
+      setCropRect({ x: imgLeft, y: imgTop, width: totalW, height: totalH });
+    }
+    if (!isCropActive) {
+      setCropRect(null);
+      setCropAspectRatio(null);
+    }
+  }, [isCropActive, selectedImage, cropRect]);
+
+  // Crop confirm: offscreen canvas crop to data URL
+  const handleCropConfirm = useCallback(() => {
+    if (!cropRect || !selectedImage) return;
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.src = selectedImage.src;
+    img.onload = () => {
+      const bw = selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width : 0;
+      const totalW = selectedImage.width + bw * 2;
+      const totalH = selectedImage.height + bw * 2;
+      const imgLeft = selectedImage.x - totalW / 2;
+      const imgTop = selectedImage.y - totalH / 2;
+      const scaleX = img.naturalWidth / totalW;
+      const scaleY = img.naturalHeight / totalH;
+      const sx = Math.round((cropRect.x - imgLeft) * scaleX);
+      const sy = Math.round((cropRect.y - imgTop) * scaleY);
+      const sw = Math.round(cropRect.width * scaleX);
+      const sh = Math.round(cropRect.height * scaleY);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = sw;
+      canvas.height = sh;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      const newSrc = canvas.toDataURL("image/png");
+
+      updateImage(selectedImage.id, {
+        src: newSrc,
+        width: cropRect.width,
+        height: cropRect.height,
+        x: cropRect.x + cropRect.width / 2,
+        y: cropRect.y + cropRect.height / 2,
+        cornerRadius: 0,
+      });
+      setActiveTool("select");
+      setCropRect(null);
+    };
+  }, [cropRect, selectedImage, updateImage, setActiveTool]);
+
+  // Crop cancel
+  const handleCropCancel = useCallback(() => {
+    setActiveTool("select");
+    setCropRect(null);
+    setCropAspectRatio(null);
+  }, [setActiveTool]);
 
   // Base scale fits canvas to container, zoom multiplies it
   const baseScale = Math.min(
@@ -81,6 +154,18 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
 
+      // Crop keyboard shortcuts
+      if (isCropActive && e.key === "Enter") {
+        e.preventDefault();
+        handleCropConfirm();
+        return;
+      }
+      if (isCropActive && e.key === "Escape") {
+        e.preventDefault();
+        handleCropCancel();
+        return;
+      }
+
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key === "0") {
         e.preventDefault();
@@ -97,7 +182,7 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [undo, redo]);
+  }, [undo, redo, isCropActive, handleCropConfirm, handleCropCancel]);
 
   // Drag-and-drop is handled in App.tsx (always mounted)
 
@@ -133,6 +218,9 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+      // Skip placement when crop tool is active
+      if (activeTool === "crop") return;
+
       // For select tool, only deselect when clicking empty canvas
       if (activeTool === "select") {
         if (e.target === e.target.getStage()) {
@@ -285,8 +373,56 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           <ScreenshotLayer />
           <PrivacyLayer />
           <AnnotationLayer />
+          {isCropActive && cropRect && (
+            <CropOverlay
+              image={selectedImage!}
+              canvasWidth={canvasWidth}
+              canvasHeight={canvasHeight}
+              cropRect={cropRect}
+              setCropRect={setCropRect}
+              aspectRatio={cropAspectRatio}
+            />
+          )}
         </Stage>
       </div>
+
+      {/* Crop toolbar */}
+      {isCropActive && (
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-3 py-2 backdrop-blur-sm z-10">
+          {[
+            { label: "Free", value: null },
+            { label: "16:9", value: 16 / 9 },
+            { label: "4:3", value: 4 / 3 },
+            { label: "1:1", value: 1 },
+          ].map(({ label, value }) => (
+            <button
+              key={label}
+              onClick={() => setCropAspectRatio(value)}
+              className={`px-2 py-1 text-[12px] rounded-md transition-colors ${
+                cropAspectRatio === value
+                  ? "bg-zinc-100 text-zinc-900"
+                  : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          <div className="w-px h-5 bg-zinc-700/60" />
+          <button
+            onClick={handleCropCancel}
+            className="px-3 py-1 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
+          >
+            Discard Crop
+          </button>
+          <button
+            onClick={handleCropConfirm}
+            className="px-3 py-1 text-[13px] rounded-md bg-zinc-100 text-zinc-900 hover:bg-zinc-200 transition-colors"
+          >
+            Crop Image
+          </button>
+          <span className="text-[11px] text-zinc-500 ml-1">Enter to confirm · Escape to cancel</span>
+        </div>
+      )}
 
       {/* Zoom and undo controls */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-1.5 py-1 backdrop-blur-sm">
