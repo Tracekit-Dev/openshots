@@ -26,7 +26,7 @@ Requirements for v1.1 Feature Completeness milestone. Each maps to roadmap phase
 
 - [x] **RENDER-01**: User sees drop shadow correctly attached to image during drag and rotation
 - [x] **RENDER-02**: User can configure directional shadow with angle, distance, and opacity controls
-- [ ] **RENDER-03**: User sees inset border color auto-matched to image edge pixels (not full-image average)
+- [x] **RENDER-03**: User sees inset border color auto-matched to image edge pixels (not full-image average)
 - [x] **RENDER-04**: User can apply grain/noise filter to canvas background via existing slider
 
 ### Core Editing
@@ -55,7 +55,7 @@ Requirements for v1.1 Feature Completeness milestone. Each maps to roadmap phase
 - [ ] **CLI-01**: User can beautify screenshots from the terminal via `openshots beautify --preset <name> --input <glob> --output <dir>`
 - [ ] **CLI-02**: User can apply annotations and export via CLI commands (`openshots annotate`, `openshots export`)
 - [ ] **SHARE-01**: User can share exported screenshot to OS-level share sheet (social/messaging)
-- [ ] **DND-01**: User can reliably drag-and-drop image files onto the canvas across macOS, Windows, and Linux
+- [x] **DND-01**: User can reliably drag-and-drop image files onto the canvas across macOS, Windows, and Linux
 
 ## v2 Requirements
 
@@ -113,9 +113,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | RENDER-01 | Phase 5 | Complete |
 | RENDER-02 | Phase 5 | Complete |
-| RENDER-03 | Phase 5 | Pending |
+| RENDER-03 | Phase 5 | Complete |
 | RENDER-04 | Phase 5 | Complete |
-| DND-01 | Phase 5 | Pending |
+| DND-01 | Phase 5 | Complete |
 | EDIT-01 | Phase 6 | Pending |
 | EDIT-02 | Phase 6 | Pending |
 | EDIT-03 | Phase 6 | Pending |

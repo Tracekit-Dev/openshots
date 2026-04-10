@@ -19,7 +19,7 @@
 
 ### v1.1 Feature Completeness
 
-- [ ] **Phase 5: Rendering Fixes and Stability** - Fix shadow, border, grain rendering bugs and cross-platform drag-and-drop
+- [x] **Phase 5: Rendering Fixes and Stability** - Fix shadow, border, grain rendering bugs and cross-platform drag-and-drop
 - [ ] **Phase 6: Complete Editor** - Crop tool, snap guides, annotation editing, blur-at-export, and advanced annotation types
 - [ ] **Phase 7: AI Background Removal** - On-device background removal with RMBG-1.4, Web Worker, and WebGPU/WASM fallback
 - [ ] **Phase 8: CLI and Share** - Terminal batch processing and OS share sheet integration
@@ -70,7 +70,7 @@
   3. User sees inset border color sampled from image edge pixels, not averaged across the entire image
   4. User can drag the grain/noise slider and see the filter applied to the canvas background
   5. User can drag image files from Finder/Explorer/file manager onto the canvas and they appear reliably on macOS, Windows, and Linux
-**Plans**: TBD
+**Plans**: 3/3 complete
 
 ### Phase 6: Complete Editor
 **Goal**: Users have a full-featured editing workflow with crop, alignment, annotation editing, advanced annotation types, and trustworthy privacy blur in exports
@@ -84,7 +84,13 @@
   5. User can select any existing annotation and change its color, stroke width, font size, dash pattern, and style via a property panel
   6. User can place numbered step callouts that auto-increment (1, 2, 3...) on the canvas
   7. Exported images contain actual pixel-level blur/pixelate in privacy regions (not just visual overlays)
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 06-01-PLAN.md -- Store types + callout tool + dash field (ANNOT-02, ANNOT-03, ANNOT-04)
+- [ ] 06-02-PLAN.md -- Annotation property panel + canvas size inputs (ANNOT-01, ANNOT-03, ANNOT-04, EDIT-03)
+- [ ] 06-03-PLAN.md -- Snap alignment guides (EDIT-04)
+- [ ] 06-04-PLAN.md -- Crop tool with aspect ratio constraints (EDIT-01, EDIT-02)
+- [ ] 06-05-PLAN.md -- Rust blur/pixelate at export (EDIT-05)
 **UI hint**: yes
 
 ### Phase 7: AI Background Removal
@@ -119,7 +125,7 @@
 | 2. Canvas Editor | v1.0 | 3/3 | Complete | 2026-04-09 |
 | 3. OSS Release Prep | v1.0 | - | Complete | 2026-04-09 |
 | 4. Landing Page | v1.0 | - | Complete | 2026-04-09 |
-| 5. Rendering Fixes and Stability | v1.1 | 2/3 | In Progress|  |
-| 6. Complete Editor | v1.1 | 0/? | Not started | - |
+| 5. Rendering Fixes and Stability | v1.1 | 3/3 | Complete   | 2026-04-10 |
+| 6. Complete Editor | v1.1 | 0/5 | Planned | - |
 | 7. AI Background Removal | v1.1 | 0/? | Not started | - |
 | 8. CLI and Share | v1.1 | 0/? | Not started | - |
