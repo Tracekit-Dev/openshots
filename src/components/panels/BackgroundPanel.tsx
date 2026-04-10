@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCanvasStore } from "../../stores/canvas.store";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readImageFile, listSystemWallpapers, convertHeicThumbnail, convertHeicToDataUrl } from "../../ipc/capture";
@@ -39,8 +39,32 @@ type BgType = "solid" | "linear-gradient" | "radial-gradient" | "image";
 export default function BackgroundPanel() {
   const background = useCanvasStore((s) => s.background);
   const setBackground = useCanvasStore((s) => s.setBackground);
+  const canvasWidth = useCanvasStore((s) => s.canvasWidth);
+  const canvasHeight = useCanvasStore((s) => s.canvasHeight);
+  const setCanvasSize = useCanvasStore((s) => s.setCanvasSize);
   const [wallpapers, setWallpapers] = useState<{ name: string; path: string; thumb?: string }[]>([]);
   const [loadingWp, setLoadingWp] = useState<string | null>(null);
+  const [widthInput, setWidthInput] = useState(String(canvasWidth));
+  const [heightInput, setHeightInput] = useState(String(canvasHeight));
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setWidthInput(String(canvasWidth));
+  }, [canvasWidth]);
+  useEffect(() => {
+    setHeightInput(String(canvasHeight));
+  }, [canvasHeight]);
+
+  const handleDimensionChange = (newW: string, newH: string) => {
+    setWidthInput(newW);
+    setHeightInput(newH);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const w = Math.min(Math.max(Number(newW) || 100, 100), 4000);
+      const h = Math.min(Math.max(Number(newH) || 100, 100), 4000);
+      setCanvasSize(w, h);
+    }, 300);
+  };
 
   // Load system wallpaper list and thumbnails when Image tab is selected
   useEffect(() => {
@@ -306,6 +330,31 @@ export default function BackgroundPanel() {
         <span className="text-[11px] text-zinc-500 w-7 text-right">
           {background.grain}
         </span>
+      </div>
+
+      {/* Canvas Size */}
+      <div className="border-t border-zinc-800/60 pt-3 mt-3">
+        <p className="text-[11px] font-medium text-zinc-500 tracking-wide mb-2">Canvas Size</p>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-zinc-500 w-4">W</span>
+          <input
+            type="number"
+            min={100}
+            max={4000}
+            value={widthInput}
+            onChange={(e) => handleDimensionChange(e.target.value, heightInput)}
+            className="w-full px-2 py-1 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 border border-zinc-700/50 focus:outline-none focus:border-zinc-500"
+          />
+          <span className="text-[11px] text-zinc-500 w-4">H</span>
+          <input
+            type="number"
+            min={100}
+            max={4000}
+            value={heightInput}
+            onChange={(e) => handleDimensionChange(widthInput, e.target.value)}
+            className="w-full px-2 py-1 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 border border-zinc-700/50 focus:outline-none focus:border-zinc-500"
+          />
+        </div>
       </div>
     </div>
   );
