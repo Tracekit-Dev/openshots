@@ -114,7 +114,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 
-[FSL-1.1-MIT](LICENSE) — source available now, converts to MIT on 2030-04-09.
+[MIT](LICENSE)
 
 ---
 

@@ -148,7 +148,7 @@ export default function SettingsPage({ onBack }: { onBack: () => void }) {
               <div className="h-px bg-zinc-800/40" />
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-zinc-400">License</span>
-                <span className="text-[13px] text-zinc-200">FSL-1.1-MIT</span>
+                <span className="text-[13px] text-zinc-200">MIT</span>
               </div>
               <div className="h-px bg-zinc-800/40" />
               <div className="flex items-center justify-between">
