@@ -8,6 +8,7 @@ import ScreenshotLayer from "./ScreenshotLayer";
 import AnnotationLayer from "./AnnotationLayer";
 import PrivacyLayer from "./PrivacyLayer";
 import CropOverlay, { type CropRect } from "./CropOverlay";
+import ContextMenu from "./ContextMenu";
 
 interface CanvasStageProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -22,6 +23,8 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   // Crop state
   const [cropRect, setCropRect] = useState<CropRect | null>(null);
   const [cropAspectRatio, setCropAspectRatio] = useState<number | null>(null);
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
@@ -32,6 +35,7 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   const addAnnotation = useCanvasStore((s) => s.addAnnotation);
   const updateAnnotation = useCanvasStore((s) => s.updateAnnotation);
   const addPrivacyRegion = useCanvasStore((s) => s.addPrivacyRegion);
+  const reorderElement = useCanvasStore((s) => s.reorderElement);
   const activeTool = useToolStore((s) => s.activeTool);
   const strokeColor = useToolStore((s) => s.strokeColor);
   const fillColor = useToolStore((s) => s.fillColor);
@@ -179,10 +183,24 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
         e.preventDefault();
         redo();
       }
+      // Z-ordering shortcuts
+      if (mod && e.key === "]" && e.shiftKey && selectedId) {
+        e.preventDefault();
+        reorderElement(selectedId, "front");
+      } else if (mod && e.key === "]" && selectedId) {
+        e.preventDefault();
+        reorderElement(selectedId, "forward");
+      } else if (mod && e.key === "[" && e.shiftKey && selectedId) {
+        e.preventDefault();
+        reorderElement(selectedId, "back");
+      } else if (mod && e.key === "[" && selectedId) {
+        e.preventDefault();
+        reorderElement(selectedId, "backward");
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [undo, redo, isCropActive, handleCropConfirm, handleCropCancel]);
+  }, [undo, redo, isCropActive, handleCropConfirm, handleCropCancel, selectedId, reorderElement]);
 
   // Drag-and-drop is handled in App.tsx (always mounted)
 
@@ -384,6 +402,12 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           onTap={handleStageClick}
           onMouseMove={handleStageMouseMove}
           onMouseUp={handleStageMouseUp}
+          onContextMenu={(e) => {
+            e.evt.preventDefault();
+            if (selectedId) {
+              setContextMenu({ x: e.evt.clientX, y: e.evt.clientY });
+            }
+          }}
         >
           <BackgroundLayer />
           <ScreenshotLayer />
@@ -438,6 +462,16 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           </button>
           <span className="text-[11px] text-zinc-500 ml-1">Enter to confirm · Escape to cancel</span>
         </div>
+      )}
+
+      {/* Context menu */}
+      {contextMenu && selectedId && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          elementId={selectedId}
+          onClose={() => setContextMenu(null)}
+        />
       )}
 
       {/* Zoom and undo controls */}

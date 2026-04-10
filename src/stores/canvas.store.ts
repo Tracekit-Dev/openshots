@@ -175,6 +175,9 @@ interface CanvasActions {
   updatePrivacyRegion: (id: string, updates: Partial<PrivacyRegion>) => void;
   removePrivacyRegion: (id: string) => void;
 
+  // Z-ordering
+  reorderElement: (id: string, direction: "front" | "back" | "forward" | "backward") => void;
+
   // Selection
   setSelectedId: (id: string | null) => void;
 
@@ -250,6 +253,50 @@ export const useCanvasStore = create<CanvasState & CanvasActions>()(
           privacyRegions: s.privacyRegions.filter((r) => r.id !== id),
           selectedId: s.selectedId === id ? null : s.selectedId,
         })),
+
+      reorderElement: (id, direction) =>
+        set((s) => {
+          const reorder = <T extends { id: string }>(arr: T[]): T[] => {
+            const idx = arr.findIndex((item) => item.id === id);
+            if (idx === -1) return arr;
+            const next = [...arr];
+            const item = next.splice(idx, 1)[0] as T;
+            switch (direction) {
+              case "front":
+                next.push(item);
+                break;
+              case "back":
+                next.unshift(item);
+                break;
+              case "forward":
+                if (idx < arr.length - 1) {
+                  next.splice(idx + 1, 0, item);
+                } else {
+                  next.push(item);
+                }
+                break;
+              case "backward":
+                if (idx > 0) {
+                  next.splice(idx - 1, 0, item);
+                } else {
+                  next.unshift(item);
+                }
+                break;
+            }
+            return next;
+          };
+
+          if (s.images.some((img) => img.id === id)) {
+            return { images: reorder(s.images) };
+          }
+          if (s.annotations.some((a) => a.id === id)) {
+            return { annotations: reorder(s.annotations) };
+          }
+          if (s.privacyRegions.some((r) => r.id === id)) {
+            return { privacyRegions: reorder(s.privacyRegions) };
+          }
+          return s;
+        }),
 
       setSelectedId: (id) => set({ selectedId: id }),
 
