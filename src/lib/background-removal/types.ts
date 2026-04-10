@@ -1,5 +1,5 @@
 export interface ProgressInfo {
-  status: 'initiate' | 'download' | 'progress' | 'done';
+  status: string;
   name?: string;
   file?: string;
   progress?: number;

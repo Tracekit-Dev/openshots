@@ -43,9 +43,10 @@ async function handleLoad(): Promise<void> {
     model = await AutoModel.from_pretrained('briaai/RMBG-1.4', {
       device,
       dtype: device === 'webgpu' ? 'fp32' : 'q8',
-      config: { model_type: 'custom' },
-      progress_callback: (progress: ProgressInfo) => {
-        post({ type: 'progress', payload: progress });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      config: { model_type: 'custom' } as any,
+      progress_callback: (progress: unknown) => {
+        post({ type: 'progress', payload: progress as ProgressInfo });
       },
     });
 
@@ -84,9 +85,8 @@ async function handleRemove(imageDataUrl: string): Promise<void> {
     });
 
     // Generate alpha mask from model output
-    const maskData = (
-      await RawImage.fromTensor(output[0].mul(255).to('uint8'))
-    ).resize(img.width, img.height);
+    const maskRaw = await RawImage.fromTensor(output[0].mul(255).to('uint8'));
+    const maskData = await maskRaw.resize(img.width, img.height);
 
     // Composite original RGB with mask alpha on OffscreenCanvas
     const canvas = new OffscreenCanvas(img.width, img.height);
@@ -94,10 +94,10 @@ async function handleRemove(imageDataUrl: string): Promise<void> {
     const imageData = ctx.createImageData(img.width, img.height);
 
     for (let i = 0; i < img.width * img.height; i++) {
-      imageData.data[4 * i] = img.data[3 * i]; // R
-      imageData.data[4 * i + 1] = img.data[3 * i + 1]; // G
-      imageData.data[4 * i + 2] = img.data[3 * i + 2]; // B
-      imageData.data[4 * i + 3] = maskData.data[i]; // A from mask
+      imageData.data[4 * i] = (img.data[3 * i] ?? 0) as number; // R
+      imageData.data[4 * i + 1] = (img.data[3 * i + 1] ?? 0) as number; // G
+      imageData.data[4 * i + 2] = (img.data[3 * i + 2] ?? 0) as number; // B
+      imageData.data[4 * i + 3] = (maskData.data[i] ?? 0) as number; // A from mask
     }
     ctx.putImageData(imageData, 0, 0);
 
@@ -107,7 +107,7 @@ async function handleRemove(imageDataUrl: string): Promise<void> {
     const bytes = new Uint8Array(buffer);
     let binary = '';
     for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
+      binary += String.fromCharCode(bytes[i] ?? 0);
     }
     const dataUrl = 'data:image/png;base64,' + btoa(binary);
 
