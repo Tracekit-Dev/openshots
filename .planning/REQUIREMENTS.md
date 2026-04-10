@@ -27,7 +27,7 @@ Requirements for v1.1 Feature Completeness milestone. Each maps to roadmap phase
 - [x] **RENDER-01**: User sees drop shadow correctly attached to image during drag and rotation
 - [x] **RENDER-02**: User can configure directional shadow with angle, distance, and opacity controls
 - [ ] **RENDER-03**: User sees inset border color auto-matched to image edge pixels (not full-image average)
-- [ ] **RENDER-04**: User can apply grain/noise filter to canvas background via existing slider
+- [x] **RENDER-04**: User can apply grain/noise filter to canvas background via existing slider
 
 ### Core Editing
 
@@ -114,7 +114,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RENDER-01 | Phase 5 | Complete |
 | RENDER-02 | Phase 5 | Complete |
 | RENDER-03 | Phase 5 | Pending |
-| RENDER-04 | Phase 5 | Pending |
+| RENDER-04 | Phase 5 | Complete |
 | DND-01 | Phase 5 | Pending |
 | EDIT-01 | Phase 6 | Pending |
 | EDIT-02 | Phase 6 | Pending |

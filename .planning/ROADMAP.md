@@ -119,7 +119,7 @@
 | 2. Canvas Editor | v1.0 | 3/3 | Complete | 2026-04-09 |
 | 3. OSS Release Prep | v1.0 | - | Complete | 2026-04-09 |
 | 4. Landing Page | v1.0 | - | Complete | 2026-04-09 |
-| 5. Rendering Fixes and Stability | v1.1 | 1/3 | In Progress|  |
+| 5. Rendering Fixes and Stability | v1.1 | 2/3 | In Progress|  |
 | 6. Complete Editor | v1.1 | 0/? | Not started | - |
 | 7. AI Background Removal | v1.1 | 0/? | Not started | - |
 | 8. CLI and Share | v1.1 | 0/? | Not started | - |
