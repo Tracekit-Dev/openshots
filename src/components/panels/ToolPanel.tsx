@@ -14,6 +14,7 @@ const TOOLS: { mode: ToolMode; label: string; shortcut: string }[] = [
   { mode: "blur", label: "Blur", shortcut: "B" },
   { mode: "pixelate", label: "Pixel", shortcut: "P" },
   { mode: "crop", label: "Crop", shortcut: "C" },
+  { mode: "callout", label: "Callout", shortcut: "N" },
 ];
 
 export default function ToolPanel() {
@@ -70,6 +71,9 @@ export default function ToolPanel() {
             updateAnnotation(ann.id, { stroke: color, fill: `${color}14` });
             break;
           case "text":
+            updateAnnotation(ann.id, { fill: color });
+            break;
+          case "callout":
             updateAnnotation(ann.id, { fill: color });
             break;
         }
