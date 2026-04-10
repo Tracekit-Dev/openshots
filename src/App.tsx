@@ -188,7 +188,10 @@ export default function App() {
         }
       })
       .then((fn) => { unlisten = fn; });
-    return () => { unlisten?.(); };
+    return () => {
+      dropRegistered.current = false;
+      unlisten?.();
+    };
   }, []);
 
   // When a capture completes, add it to the canvas
