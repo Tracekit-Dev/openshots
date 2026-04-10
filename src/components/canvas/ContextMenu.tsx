@@ -6,6 +6,7 @@ interface ContextMenuProps {
   y: number;
   elementId: string;
   onClose: () => void;
+  onRemoveBackground?: (elementId: string) => void;
 }
 
 const isMac = typeof navigator !== "undefined" && navigator.platform.includes("Mac");
@@ -24,7 +25,8 @@ const items: MenuItem[] = [
   { label: "Send to Back", shortcut: `${modKey}+Shift+[`, direction: "back" },
 ];
 
-export default function ContextMenu({ x, y, elementId, onClose }: ContextMenuProps) {
+export default function ContextMenu({ x, y, elementId, onClose, onRemoveBackground }: ContextMenuProps) {
+  const isImage = useCanvasStore.getState().images.some((img) => img.id === elementId);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,6 +70,20 @@ export default function ContextMenu({ x, y, elementId, onClose }: ContextMenuPro
             </button>
           </div>
         ))}
+        {isImage && onRemoveBackground && (
+          <>
+            <div className="h-px bg-zinc-700/40 my-1" />
+            <button
+              onClick={() => {
+                onRemoveBackground(elementId);
+                onClose();
+              }}
+              className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-zinc-200 hover:bg-zinc-800 transition-colors"
+            >
+              <span>Remove Background</span>
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
