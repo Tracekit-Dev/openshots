@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
-import { save } from "@tauri-apps/plugin-dialog";
+import { open, save, ask } from "@tauri-apps/plugin-dialog";
 import {
   useCanvasStore,
   type CanvasBackground,
@@ -168,3 +168,108 @@ export const useProjectStore = create<ProjectMeta>()((set) => ({
 useCanvasStore.subscribe(() => {
   useProjectStore.getState().markDirty();
 });
+
+// ---------------------------------------------------------------------------
+// Load project into canvas
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply a deserialized ProjectFile to the canvas store, replacing all state.
+ * Resets undo history and updates project meta.
+ */
+export function loadProject(projectFile: ProjectFile, filePath: string): void {
+  // Apply all canvas state atomically
+  useCanvasStore.setState({
+    canvasWidth: projectFile.canvas.width,
+    canvasHeight: projectFile.canvas.height,
+    padding: projectFile.canvas.padding,
+    background: projectFile.canvas.background,
+    images: projectFile.images,
+    annotations: projectFile.annotations,
+    privacyRegions: projectFile.privacyRegions,
+    selectedId: null,
+  });
+
+  // Reset undo history so loaded state becomes the new baseline
+  useCanvasStore.temporal.getState().clear();
+
+  // Update project meta
+  useProjectStore.getState().markClean(filePath);
+}
+
+// ---------------------------------------------------------------------------
+// Unsaved changes guard
+// ---------------------------------------------------------------------------
+
+/**
+ * If there are unsaved changes, prompt the user to save first.
+ * Returns true if it is safe to proceed (saved or discarded), false to abort.
+ */
+export async function confirmDiscardChanges(): Promise<boolean> {
+  const { isDirty } = useProjectStore.getState();
+  if (!isDirty) return true;
+
+  const shouldSave = await ask(
+    "You have unsaved changes. Do you want to save before continuing?",
+    { title: "Unsaved Changes", kind: "warning" },
+  );
+
+  if (shouldSave) {
+    await saveProject();
+  }
+
+  // Whether user chose save or discard, proceed. The ask() dialog only
+  // returns true/false (Yes/No) — there is no cancel option, so we always proceed.
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Open project from file dialog
+// ---------------------------------------------------------------------------
+
+/**
+ * Show a native file dialog filtered to .openshots, read and load the project.
+ * Prompts to save unsaved changes first.
+ */
+export async function openProject(): Promise<void> {
+  const canProceed = await confirmDiscardChanges();
+  if (!canProceed) return;
+
+  const filePath = await open({
+    multiple: false,
+    filters: [{ name: "OpenShots Project", extensions: ["openshots"] }],
+  });
+
+  if (!filePath) return;
+
+  try {
+    const contents = await invoke<string>("read_text_file", {
+      path: filePath as string,
+    });
+    const project = deserializeProject(contents);
+    loadProject(project, filePath as string);
+  } catch (err) {
+    console.error("[OpenShots] Failed to open project:", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Open project from a known path (drag-drop, OS file association)
+// ---------------------------------------------------------------------------
+
+/**
+ * Open a project file from a known file path (e.g. drag-and-drop).
+ * Prompts to save unsaved changes first.
+ */
+export async function openProjectFromPath(filePath: string): Promise<void> {
+  const canProceed = await confirmDiscardChanges();
+  if (!canProceed) return;
+
+  try {
+    const contents = await invoke<string>("read_text_file", { path: filePath });
+    const project = deserializeProject(contents);
+    loadProject(project, filePath);
+  } catch (err) {
+    console.error("[OpenShots] Failed to open project from path:", err);
+  }
+}

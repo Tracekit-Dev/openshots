@@ -82,3 +82,11 @@ pub async fn save_text_file(path: String, contents: String) -> Result<String, St
         .map_err(|e| format!("Failed to write file: {e}"))?;
     Ok(path)
 }
+
+/// Read a text file and return its contents as a string.
+/// Used by the frontend to load project files (.openshots JSON).
+#[tauri::command]
+pub async fn read_text_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read file: {e}"))
+}

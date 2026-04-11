@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useToolStore } from "../stores/tool.store";
 import { useCanvasStore } from "../stores/canvas.store";
-import { saveProject } from "../lib/project-file";
+import { saveProject, openProject } from "../lib/project-file";
 
 export interface ShortcutEntry {
   key: string;
@@ -48,6 +48,13 @@ export function useHotkeys() {
       if (mod && e.key === "s") {
         e.preventDefault();
         void saveProject();
+        return;
+      }
+
+      // Open project (Cmd+O)
+      if (mod && e.key === "o") {
+        e.preventDefault();
+        void openProject();
         return;
       }
 

@@ -172,6 +172,7 @@ pub fn run() {
             commands::capture::convert_heic_to_data_url,
             commands::export::export_image,
             commands::export::save_text_file,
+            commands::export::read_text_file,
             commands::share::share_file,
             update_hotkeys,
         ])

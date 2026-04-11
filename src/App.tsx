@@ -8,6 +8,7 @@ import { useAppStore } from "./stores/app.store";
 import { useCanvasStore, type CanvasImage } from "./stores/canvas.store";
 import { useCaptureFlow } from "./hooks/useCaptureFlow";
 import { readImageFile } from "./ipc/capture";
+import { openProjectFromPath } from "./lib/project-file";
 import RegionOverlay from "./components/capture/RegionOverlay";
 import WindowPicker from "./components/capture/WindowPicker";
 import WaylandBanner from "./components/shell/WaylandBanner";
@@ -175,8 +176,15 @@ export default function App() {
     getCurrentWebview()
       .onDragDropEvent(async (event) => {
         if (event.payload.type === "drop") {
+          let projectOpened = false;
           for (const filePath of event.payload.paths) {
             const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+            // Handle .openshots project files — only open the first one
+            if (ext === "openshots" && !projectOpened) {
+              projectOpened = true;
+              void openProjectFromPath(filePath);
+              continue;
+            }
             if (!["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) continue;
             try {
               const dataUrl = await readImageFile(filePath);
