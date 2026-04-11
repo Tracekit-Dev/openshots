@@ -15,6 +15,7 @@ import WaylandBanner from "./components/shell/WaylandBanner";
 import SettingsPage from "./components/shell/SettingsPage";
 import CanvasStage, { addScreenshotToCanvas } from "./components/canvas/CanvasStage";
 import EditorToolbar from "./components/toolbar/EditorToolbar";
+import BackgroundPopover from "./components/toolbar/BackgroundPopover";
 import ShortcutsModal from "./components/shell/ShortcutsModal";
 import { useHotkeys } from "./hooks/useHotkeys";
 
@@ -97,6 +98,7 @@ export default function App() {
   const images = useCanvasStore((s) => s.images);
   const [view, setView] = useState<View>("main");
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [bgPopover, setBgPopover] = useState<{ x: number; y: number } | null>(null);
   const stageRef = useRef<Konva.Stage>(null);
 
   useHotkeys();
@@ -229,9 +231,7 @@ export default function App() {
         import("./lib/project-file").then((m) => m.saveProject());
       }),
       listen("menu:export", () => {
-        // Focus the export panel — trigger via DOM click on export button if available
-        const exportBtn = document.querySelector("[data-export-trigger]") as HTMLButtonElement | null;
-        if (exportBtn) exportBtn.click();
+        window.dispatchEvent(new Event("openExportPopover"));
       }),
     ];
     return () => { listeners.forEach((p) => p.then((fn) => fn())); };
@@ -259,7 +259,7 @@ export default function App() {
     <div className="flex h-screen flex-col bg-zinc-950 text-zinc-100">
       <WaylandBanner />
 
-      {/* Toolbar */}
+      {/* Capture bar */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-zinc-800/60">
         <div className="flex items-center gap-1">
           <button
@@ -326,7 +326,10 @@ export default function App() {
       {/* Canvas area -- full width, no sidebars */}
       <div className="flex-1 overflow-hidden">
         {hasImages ? (
-          <CanvasStage stageRef={stageRef} />
+          <CanvasStage
+            stageRef={stageRef}
+            onBackgroundClick={(pos) => setBgPopover(pos)}
+          />
         ) : (
           <EmptyState
             onFullscreen={() => void handleFullscreen()}
@@ -336,6 +339,11 @@ export default function App() {
           />
         )}
       </div>
+
+      {/* Background popover */}
+      {bgPopover && (
+        <BackgroundPopover position={bgPopover} onClose={() => setBgPopover(null)} />
+      )}
 
       {/* Window picker modal */}
       {captureState === "selecting-window" && (
@@ -365,7 +373,7 @@ function EmptyState({
   onUpload: () => void;
 }) {
   return (
-    <div className="flex-1 flex items-center justify-center bg-zinc-900/50">
+    <div className="flex-1 flex items-center justify-center bg-zinc-900/50 h-full">
       <div className="flex flex-col items-center gap-6 max-w-sm">
         {/* Icon */}
         <div className="w-16 h-16 rounded-2xl bg-zinc-800/80 flex items-center justify-center">

@@ -24,6 +24,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   { key: "Meta+s", label: "Cmd+S", description: "Save project", category: "Canvas" },
   { key: "Meta+o", label: "Cmd+O", description: "Open project", category: "Canvas" },
   { key: "Delete", label: "Delete", description: "Delete selected", category: "Canvas" },
+  { key: "Meta+e", label: "Cmd+E", description: "Export / Done", category: "Canvas" },
   { key: "Escape", label: "Esc", description: "Deselect", category: "Canvas" },
 ];
 
@@ -55,6 +56,13 @@ export function useHotkeys() {
       if (mod && e.key === "o") {
         e.preventDefault();
         void openProject();
+        return;
+      }
+
+      // Export popover (Cmd+E)
+      if (mod && e.key === "e") {
+        e.preventDefault();
+        window.dispatchEvent(new Event("openExportPopover"));
         return;
       }
 

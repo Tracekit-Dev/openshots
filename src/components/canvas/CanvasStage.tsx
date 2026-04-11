@@ -15,9 +15,10 @@ import type { ProgressInfo } from "../../lib/background-removal/types";
 
 interface CanvasStageProps {
   stageRef: React.RefObject<Konva.Stage | null>;
+  onBackgroundClick?: (position: { x: number; y: number }) => void;
 }
 
-export default function CanvasStage({ stageRef }: CanvasStageProps) {
+export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
   const [zoom, setZoom] = useState(1);
@@ -350,6 +351,11 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
       if (activeTool === "select") {
         if (e.target === e.target.getStage()) {
           setSelectedId(null);
+          // Trigger background popover on background click
+          if (onBackgroundClick) {
+            const nativeEvt = e.evt as MouseEvent;
+            onBackgroundClick({ x: nativeEvt.clientX, y: nativeEvt.clientY });
+          }
         }
         return;
       }
@@ -482,6 +488,7 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
       fontSize,
       selectedEmoji,
       setActiveTool,
+      onBackgroundClick,
     ],
   );
 
