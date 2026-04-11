@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCanvasStore } from "../../stores/canvas.store";
-import { exportCanvas, type ExportFormat, type PrivacyRegionExport } from "../../ipc/export";
+import { exportCanvas, type ExportFormat } from "../../ipc/export";
+import { shareFile } from "../../ipc/share";
 import Konva from "konva";
 
 interface ExportPanelProps {
@@ -15,7 +16,6 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
   const [lastExport, setLastExport] = useState<string | null>(null);
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
-  const privacyRegions = useCanvasStore((s) => s.privacyRegions);
 
   const handleExport = async () => {
     const stage = stageRef.current;
@@ -47,22 +47,11 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
       ctx.drawImage(img, 0, 0, outW, outH);
       const imageData = ctx.getImageData(0, 0, outW, outH);
 
-      // Scale privacy region coordinates from canvas space to export pixel space
-      const exportScale = outW / canvasWidth;
-      const scaledRegions: PrivacyRegionExport[] = privacyRegions.map((r) => ({
-        region_type: r.type,
-        x: Math.round(r.x * exportScale),
-        y: Math.round(r.y * exportScale),
-        width: Math.round(r.width * exportScale),
-        height: Math.round(r.height * exportScale),
-        intensity: r.intensity,
-      }));
-
       const result = await exportCanvas(
         new Uint8Array(imageData.data.buffer),
         outW,
         outH,
-        { format, quality, scale: 1, privacyRegions: scaledRegions.length > 0 ? scaledRegions : undefined },
+        { format, quality, scale: 1 },
       );
 
       if (result) setLastExport(result);
@@ -70,6 +59,17 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
       console.error("Export failed:", err);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const isShareable = lastExport !== null && lastExport !== "Copied to clipboard!";
+
+  const handleShare = async () => {
+    if (!isShareable) return;
+    try {
+      await shareFile(lastExport);
+    } catch (err) {
+      console.error("Share failed:", err);
     }
   };
 
@@ -170,6 +170,19 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
         className="w-full px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
       >
         Copy to Clipboard
+      </button>
+
+      <button
+        onClick={handleShare}
+        disabled={!isShareable}
+        className="w-full px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5"
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 8.5V12.5C4 13.05 4.45 13.5 5 13.5H11C11.55 13.5 12 13.05 12 12.5V8.5" />
+          <polyline points="8 2 8 10" />
+          <polyline points="5.5 4.5 8 2 10.5 4.5" />
+        </svg>
+        Share
       </button>
 
       {lastExport && (
