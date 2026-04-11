@@ -541,5 +541,31 @@
       }
     }
   </script>
+  <script>
+    // Auto-update download links and version badge to latest GitHub release
+    (async () => {
+      try {
+        const res = await fetch("https://api.github.com/repos/Tracekit-Dev/openshots/releases/latest");
+        if (!res.ok) return;
+        const data = await res.json();
+        const tag = data.tag_name; // e.g. "v2.0.1"
+        const ver = tag.replace(/^v/, ""); // e.g. "2.0.1"
+
+        // Update version badge
+        const badge = document.querySelector(".logo-badge");
+        if (badge) badge.textContent = tag;
+
+        // Update download links
+        document.querySelectorAll(".download-card").forEach((card) => {
+          const link = card;
+          const href = link.getAttribute("href");
+          if (href && href.includes("/releases/latest/download/OpenShots_")) {
+            const newHref = href.replace(/OpenShots_[\d.]+/, "OpenShots_" + ver);
+            link.setAttribute("href", newHref);
+          }
+        });
+      } catch { /* silently fail — hardcoded links remain as fallback */ }
+    })();
+  </script>
 </body>
 </html>
