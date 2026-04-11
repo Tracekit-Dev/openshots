@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use openshots_lib::presets;
-use openshots_lib::processing::{self, CliPreset};
+use openshots_lib::processing::{self, CliPreset, PrivacyRegion};
+use openshots_lib::{annotations, render};
 use std::path::Path;
 
 #[derive(Parser)]
@@ -39,8 +40,36 @@ enum Commands {
     /// List available presets (built-in + user)
     ListPresets,
 
-    /// Add annotations to an image
-    Annotate,
+    /// Add text annotation/watermark to an image
+    Annotate {
+        /// Input image file path
+        #[arg(long)]
+        input: String,
+
+        /// Output image file path
+        #[arg(long)]
+        output: String,
+
+        /// Text to add
+        #[arg(long)]
+        text: String,
+
+        /// X position of text
+        #[arg(long, default_value = "10")]
+        text_x: i32,
+
+        /// Y position of text
+        #[arg(long, default_value = "10")]
+        text_y: i32,
+
+        /// Font size in pixels
+        #[arg(long, default_value = "24")]
+        font_size: f32,
+
+        /// Text color as hex (#RRGGBB)
+        #[arg(long, default_value = "#ffffff")]
+        color: String,
+    },
 
     /// Convert image format/quality (re-encode)
     Export {
@@ -63,6 +92,44 @@ enum Commands {
         /// Scale factor (1, 2, or 3)
         #[arg(long, default_value = "1")]
         scale: u32,
+    },
+
+    /// Apply privacy blur/pixelate to image regions
+    Privacy {
+        /// Input image file path
+        #[arg(long)]
+        input: String,
+
+        /// Output image file path
+        #[arg(long)]
+        output: String,
+
+        /// Regions as "x,y,width,height" (separate multiple with ;)
+        #[arg(long, value_delimiter = ';')]
+        regions: Vec<String>,
+
+        /// Pixelation block size (higher = more pixelated)
+        #[arg(long, default_value = "12")]
+        intensity: u32,
+    },
+
+    /// Render an .openshots project file to an image
+    Render {
+        /// Path to the .openshots project file
+        #[arg(long)]
+        input: String,
+
+        /// Output image path
+        #[arg(long)]
+        output: String,
+
+        /// Output format: png, jpeg, or webp
+        #[arg(long, default_value = "png")]
+        format: String,
+
+        /// JPEG/WebP quality (1-100)
+        #[arg(long, default_value = "90")]
+        quality: u32,
     },
 }
 
@@ -196,6 +263,181 @@ fn run_export(input: &str, output: &str, format: &str, quality: u32, scale: u32)
     }
 }
 
+fn run_annotate(input: &str, output: &str, text: &str, text_x: i32, text_y: i32, font_size: f32, color: &str) {
+    let input_path = Path::new(input);
+    if !input_path.exists() {
+        eprintln!("Error: Input file '{}' not found", input);
+        std::process::exit(1);
+    }
+
+    let mut img = match image::open(input_path) {
+        Ok(img) => img.to_rgba8(),
+        Err(e) => {
+            eprintln!("Error: Failed to open '{}': {e}", input);
+            std::process::exit(1);
+        }
+    };
+
+    let rgba_color = match processing::parse_hex_color(color) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Error: Invalid color '{}': {e}", color);
+            std::process::exit(1);
+        }
+    };
+
+    if let Err(e) = annotations::render_text_watermark(&mut img, text, text_x, text_y, font_size, rgba_color) {
+        eprintln!("Error: Failed to render text: {e}");
+        std::process::exit(1);
+    }
+
+    let output_path = Path::new(output);
+    if let Some(parent) = output_path.parent() {
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            eprintln!("Error: Failed to create output directory: {e}");
+            std::process::exit(1);
+        }
+    }
+
+    // Detect format from output extension
+    let format = output_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("png");
+
+    match processing::encode_to_file(&img, output_path, format, 90) {
+        Ok(()) => println!("Annotated: {} -> {}", input, output),
+        Err(e) => {
+            eprintln!("Error: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Parse a region string "x,y,width,height" into a PrivacyRegion.
+fn parse_region(region_str: &str, intensity: u32) -> Result<PrivacyRegion, String> {
+    let parts: Vec<&str> = region_str.split(',').collect();
+    if parts.len() != 4 {
+        return Err(format!(
+            "Invalid region format '{}': expected 'x,y,width,height'",
+            region_str
+        ));
+    }
+
+    let x: u32 = parts[0]
+        .trim()
+        .parse()
+        .map_err(|_| format!("Invalid x coordinate '{}': must be a non-negative integer", parts[0].trim()))?;
+    let y: u32 = parts[1]
+        .trim()
+        .parse()
+        .map_err(|_| format!("Invalid y coordinate '{}': must be a non-negative integer", parts[1].trim()))?;
+    let width: u32 = parts[2]
+        .trim()
+        .parse()
+        .map_err(|_| format!("Invalid width '{}': must be a non-negative integer", parts[2].trim()))?;
+    let height: u32 = parts[3]
+        .trim()
+        .parse()
+        .map_err(|_| format!("Invalid height '{}': must be a non-negative integer", parts[3].trim()))?;
+
+    Ok(PrivacyRegion {
+        region_type: "pixelate".to_string(),
+        x,
+        y,
+        width,
+        height,
+        intensity,
+    })
+}
+
+fn run_privacy(input: &str, output: &str, regions: &[String], intensity: u32) {
+    let input_path = Path::new(input);
+    if !input_path.exists() {
+        eprintln!("Error: Input file '{}' not found", input);
+        std::process::exit(1);
+    }
+
+    let mut img = match image::open(input_path) {
+        Ok(img) => img.to_rgba8(),
+        Err(e) => {
+            eprintln!("Error: Failed to open '{}': {e}", input);
+            std::process::exit(1);
+        }
+    };
+
+    let mut parsed_regions: Vec<PrivacyRegion> = Vec::new();
+    for region_str in regions {
+        match parse_region(region_str, intensity) {
+            Ok(r) => parsed_regions.push(r),
+            Err(e) => {
+                eprintln!("Error: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    if parsed_regions.is_empty() {
+        eprintln!("Error: No valid regions specified");
+        std::process::exit(1);
+    }
+
+    processing::apply_privacy_regions(&mut img, &parsed_regions, 1.0);
+
+    let output_path = Path::new(output);
+    if let Some(parent) = output_path.parent() {
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            eprintln!("Error: Failed to create output directory: {e}");
+            std::process::exit(1);
+        }
+    }
+
+    let format = output_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("png");
+
+    match processing::encode_to_file(&img, output_path, format, 90) {
+        Ok(()) => println!("Privacy applied: {} -> {} ({} regions)", input, output, parsed_regions.len()),
+        Err(e) => {
+            eprintln!("Error: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+fn run_render(input: &str, output: &str, format: &str, quality: u32) {
+    let input_path = Path::new(input);
+    if !input_path.exists() {
+        eprintln!("Error: Input file '{}' not found", input);
+        std::process::exit(1);
+    }
+
+    let json = match std::fs::read_to_string(input_path) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Error: Failed to read '{}': {e}", input);
+            std::process::exit(1);
+        }
+    };
+
+    let output_path = Path::new(output);
+    if let Some(parent) = output_path.parent() {
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            eprintln!("Error: Failed to create output directory: {e}");
+            std::process::exit(1);
+        }
+    }
+
+    match render::render_project_file(&json, output_path, format, quality) {
+        Ok(()) => println!("Rendered: {} -> {}", input, output),
+        Err(e) => {
+            eprintln!("Error: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -222,12 +464,15 @@ fn main() {
             }
         }
 
-        Commands::Annotate => {
-            println!(
-                "Annotation via CLI is planned for a future release. \
-                 Use the OpenShots GUI for annotation workflows."
-            );
-        }
+        Commands::Annotate {
+            input,
+            output,
+            text,
+            text_x,
+            text_y,
+            font_size,
+            color,
+        } => run_annotate(&input, &output, &text, text_x, text_y, font_size, &color),
 
         Commands::Export {
             input,
@@ -236,5 +481,19 @@ fn main() {
             quality,
             scale,
         } => run_export(&input, &output, &format, quality, scale),
+
+        Commands::Privacy {
+            input,
+            output,
+            regions,
+            intensity,
+        } => run_privacy(&input, &output, &regions, intensity),
+
+        Commands::Render {
+            input,
+            output,
+            format,
+            quality,
+        } => run_render(&input, &output, &format, quality),
     }
 }
