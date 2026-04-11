@@ -6,6 +6,7 @@ use tauri::{
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 mod commands;
+pub mod processing;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PlatformFlags {
