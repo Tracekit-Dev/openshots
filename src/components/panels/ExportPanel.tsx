@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCanvasStore } from "../../stores/canvas.store";
 import { exportCanvas, type ExportFormat } from "../../ipc/export";
+import { saveProject } from "../../lib/project-file";
 import { shareFile } from "../../ipc/share";
 import Konva from "konva";
 
@@ -59,17 +60,6 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
       console.error("Export failed:", err);
     } finally {
       setExporting(false);
-    }
-  };
-
-  const isShareable = lastExport !== null && lastExport !== "Copied to clipboard!";
-
-  const handleShare = async () => {
-    if (!isShareable) return;
-    try {
-      await shareFile(lastExport);
-    } catch (err) {
-      console.error("Share failed:", err);
     }
   };
 
@@ -172,17 +162,39 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
         Copy to Clipboard
       </button>
 
+      {/* Divider */}
+      <div className="h-px bg-zinc-800/60" />
+
       <button
-        onClick={handleShare}
-        disabled={!isShareable}
-        className="w-full px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5"
+        onClick={async () => {
+          try {
+            const path = await saveProject();
+            if (path) {
+              setLastExport(`Saved: ${path}`);
+              setTimeout(() => setLastExport(null), 3000);
+            }
+          } catch (err) {
+            console.error("Save project failed:", err);
+          }
+        }}
+        className="w-full px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
       >
-        <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 8.5V12.5C4 13.05 4.45 13.5 5 13.5H11C11.55 13.5 12 13.05 12 12.5V8.5" />
-          <polyline points="8 2 8 10" />
-          <polyline points="5.5 4.5 8 2 10.5 4.5" />
-        </svg>
-        Share
+        Save as Project
+      </button>
+
+      <button
+        onClick={async () => {
+          if (!lastExport || lastExport.startsWith("Copied") || lastExport.startsWith("Saved")) return;
+          try {
+            await shareFile(lastExport);
+          } catch (err) {
+            console.error("Share failed:", err);
+          }
+        }}
+        disabled={!lastExport || lastExport.startsWith("Copied") || lastExport.startsWith("Saved")}
+        className="w-full px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Share Last Export
       </button>
 
       {lastExport && (

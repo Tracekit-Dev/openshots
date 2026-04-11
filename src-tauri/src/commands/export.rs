@@ -1,5 +1,4 @@
-use crate::processing;
-use image::{ImageBuffer, Rgba};
+use image::{ImageBuffer, ImageEncoder, Rgba};
 use std::path::PathBuf;
 
 /// Export raw RGBA image data to a file in the specified format.
@@ -18,10 +17,68 @@ pub async fn export_image(
         ImageBuffer::from_raw(width, height, image_data)
             .ok_or_else(|| "Invalid image data dimensions".to_string())?;
 
-    let (final_img, _final_w, _final_h) = processing::scale_image(img, scale);
+    let (final_img, final_w, final_h) = if scale > 1 {
+        let new_w = width * scale;
+        let new_h = height * scale;
+        let resized = image::imageops::resize(
+            &img,
+            new_w,
+            new_h,
+            image::imageops::FilterType::Lanczos3,
+        );
+        (resized, new_w, new_h)
+    } else {
+        (img, width, height)
+    };
 
     let path = PathBuf::from(&output_path);
-    processing::encode_to_file(&final_img, &path, &format, quality)?;
+    let file =
+        std::fs::File::create(&path).map_err(|e| format!("Failed to create file: {e}"))?;
+    let writer = std::io::BufWriter::new(file);
+
+    match format.as_str() {
+        "png" => {
+            image::codecs::png::PngEncoder::new(writer)
+                .write_image(
+                    final_img.as_raw(),
+                    final_w,
+                    final_h,
+                    image::ExtendedColorType::Rgba8,
+                )
+                .map_err(|e| format!("PNG encoding failed: {e}"))?;
+        }
+        "jpeg" | "jpg" => {
+            let rgb_img = image::DynamicImage::ImageRgba8(final_img).to_rgb8();
+            image::codecs::jpeg::JpegEncoder::new_with_quality(writer, quality as u8)
+                .write_image(
+                    rgb_img.as_raw(),
+                    final_w,
+                    final_h,
+                    image::ExtendedColorType::Rgb8,
+                )
+                .map_err(|e| format!("JPEG encoding failed: {e}"))?;
+        }
+        "webp" => {
+            image::codecs::webp::WebPEncoder::new_lossless(writer)
+                .write_image(
+                    final_img.as_raw(),
+                    final_w,
+                    final_h,
+                    image::ExtendedColorType::Rgba8,
+                )
+                .map_err(|e| format!("WebP encoding failed: {e}"))?;
+        }
+        _ => return Err(format!("Unsupported format: {format}")),
+    }
 
     Ok(output_path)
+}
+
+/// Write a text string to a file at the given path.
+/// Used by the frontend to save project files (.openshots JSON).
+#[tauri::command]
+pub async fn save_text_file(path: String, contents: String) -> Result<String, String> {
+    std::fs::write(&path, contents.as_bytes())
+        .map_err(|e| format!("Failed to write file: {e}"))?;
+    Ok(path)
 }
