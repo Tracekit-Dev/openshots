@@ -2,7 +2,7 @@
 
 Turn raw screenshots into polished, shareable visuals in seconds. Free, open-source, and completely offline.
 
-OpenShots is a cross-platform desktop app built with Tauri (Rust + React). Capture screenshots, add beautiful backgrounds, annotate with shapes and text, blur sensitive areas, and export — all without leaving the app or sending data anywhere.
+OpenShots is a cross-platform desktop app built with Tauri (Rust + React). Capture screenshots, add beautiful backgrounds, annotate with shapes and text, blur sensitive areas, and export polished results without leaving the app or sending data anywhere.
 
 **Built by the [TraceKit](https://github.com/Tracekit-Dev) team** — the makers of TraceKit APM.
 
@@ -12,6 +12,7 @@ OpenShots is a cross-platform desktop app built with Tauri (Rust + React). Captu
 - Full screen, region selection, or specific window capture
 - Global hotkeys (configurable)
 - System tray quick access
+- Self-timer, Retina downscale, and crosshair-assisted capture
 - macOS Screen Recording permission handling
 
 **Beautify**
@@ -20,9 +21,11 @@ OpenShots is a cross-platform desktop app built with Tauri (Rust + React). Captu
 - Adjustable padding, rounded corners, drop shadows
 - Auto-matched inset borders
 - Multiple images with fan layout
+- Window chrome and device mockup frames
 
 **Annotate**
 - Arrows, rectangles, ellipses, text labels, emoji
+- Speech bubbles, spotlight overlays, and numbered callouts
 - Blur and pixelate regions for privacy
 - Drag, resize, rotate any element
 - Full undo/redo history
@@ -31,12 +34,16 @@ OpenShots is a cross-platform desktop app built with Tauri (Rust + React). Captu
 - PNG, JPEG, WebP with quality control
 - 1x, 2x, 3x scale export
 - One-click clipboard copy
+- OS share sheet integration
 - Save/apply reusable presets
+- Import/export presets as JSON
+- Auto-save projects and reopen recent work
 
-**Automation** *(coming soon)*
+**Automation**
 - CLI for batch processing with preset support
-- Agent-friendly interface — let AI tools like Claude Code generate polished visuals automatically
 - `openshots beautify --preset <name> --input <glob> --output <dir>`
+- `openshots export --input input.png --output output.webp --format webp`
+- `openshots annotate` is reserved for a future release; use the GUI for annotation workflows today
 
 ## Install
 
@@ -44,11 +51,11 @@ Download the latest release for your platform:
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [.dmg](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_0.1.0_aarch64.dmg) |
-| macOS (Intel) | [.dmg](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_0.1.0_x64.dmg) |
-| Windows | [.msi](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_0.1.0_x64_en-US.msi) |
-| Linux (AppImage) | [.AppImage](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_0.1.0_amd64.AppImage) |
-| Linux (deb) | [.deb](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_0.1.0_amd64.deb) |
+| macOS (Apple Silicon) | [.dmg](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.0_aarch64.dmg) |
+| macOS (Intel) | [.dmg](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.0_x64.dmg) |
+| Windows | [.msi](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.0_x64_en-US.msi) |
+| Linux (AppImage) | [.AppImage](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.0_amd64.AppImage) |
+| Linux (deb) | [.deb](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.0_amd64.deb) |
 
 The macOS builds are code-signed and notarized with an Apple Developer ID certificate.
 
