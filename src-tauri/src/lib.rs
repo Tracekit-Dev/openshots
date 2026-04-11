@@ -193,6 +193,12 @@ pub fn run() {
             handle.emit("platform:flags", PlatformFlags { is_wayland })?;
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::capture::capture_fullscreen,
             commands::capture::capture_all_monitors,
@@ -208,6 +214,7 @@ pub fn run() {
             commands::export::read_text_file,
             commands::export::save_temp_export,
             commands::share::share_file,
+            commands::tray::update_tray_menu,
             update_hotkeys,
         ])
         .run(tauri::generate_context!())
