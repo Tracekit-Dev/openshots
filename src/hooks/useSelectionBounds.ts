@@ -19,10 +19,12 @@ export function useSelectionBounds(
 ): SelectionBounds | null {
   const [bounds, setBounds] = useState<SelectionBounds | null>(null);
   const rafRef = useRef<number | null>(null);
+  const prevBoundsRef = useRef<string>("");
 
   useEffect(() => {
     if (!selectedId) {
       setBounds(null);
+      prevBoundsRef.current = "";
       return;
     }
 
@@ -32,34 +34,35 @@ export function useSelectionBounds(
 
       const node = stage.findOne("#" + selectedId);
       if (!node) {
-        setBounds(null);
+        if (prevBoundsRef.current !== "null") {
+          setBounds(null);
+          prevBoundsRef.current = "null";
+        }
         return;
       }
 
-      // Get bounding rect in stage coordinates
       const stageRect = node.getClientRect({ relativeTo: stage });
-
-      // Get the canvas element's position on screen
       const canvasEl = stage.container().querySelector("canvas");
       if (!canvasEl) return;
       const containerRect = canvasEl.getBoundingClientRect();
 
-      // Stage scale factor
       const scaleX = stage.scaleX();
       const scaleY = stage.scaleY();
 
-      setBounds({
-        x: containerRect.left + stageRect.x * scaleX,
-        y: containerRect.top + stageRect.y * scaleY,
-        width: stageRect.width * scaleX,
-        height: stageRect.height * scaleY,
-      });
+      const newX = Math.round(containerRect.left + stageRect.x * scaleX);
+      const newY = Math.round(containerRect.top + stageRect.y * scaleY);
+      const newW = Math.round(stageRect.width * scaleX);
+      const newH = Math.round(stageRect.height * scaleY);
+
+      const key = `${newX},${newY},${newW},${newH}`;
+      if (key !== prevBoundsRef.current) {
+        prevBoundsRef.current = key;
+        setBounds({ x: newX, y: newY, width: newW, height: newH });
+      }
     };
 
-    // Calculate immediately
     calculate();
 
-    // Set up animation frame loop to track position during drag
     const tick = () => {
       calculate();
       rafRef.current = requestAnimationFrame(tick);
