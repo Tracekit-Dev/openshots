@@ -157,7 +157,7 @@ pub fn encode_to_file(
 }
 
 /// Parse a hex color string (#RRGGBB or #RRGGBBAA) into an Rgba pixel.
-fn parse_hex_color(hex: &str) -> Result<Rgba<u8>, String> {
+pub fn parse_hex_color(hex: &str) -> Result<Rgba<u8>, String> {
     let hex = hex.trim_start_matches('#');
     match hex.len() {
         6 => {
@@ -189,7 +189,7 @@ fn lerp_color(a: Rgba<u8>, b: Rgba<u8>, t: f64) -> Rgba<u8> {
 }
 
 /// Fill a canvas with a background based on the preset configuration.
-fn fill_background(canvas: &mut RgbaImage, bg: &CliBackground) {
+pub fn fill_background(canvas: &mut RgbaImage, bg: &CliBackground) {
     let (w, h) = canvas.dimensions();
     match bg.bg_type.as_str() {
         "solid" => {
@@ -242,7 +242,7 @@ fn fill_background(canvas: &mut RgbaImage, bg: &CliBackground) {
 }
 
 /// Apply rounded corner alpha mask to an image in-place.
-fn apply_corner_radius(img: &mut RgbaImage, radius: u32) {
+pub fn apply_corner_radius(img: &mut RgbaImage, radius: u32) {
     if radius == 0 {
         return;
     }
