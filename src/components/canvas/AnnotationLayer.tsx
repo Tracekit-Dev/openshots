@@ -238,7 +238,7 @@ export default function AnnotationLayer() {
             points={shape.points}
             stroke={shape.stroke}
             strokeWidth={shape.strokeWidth}
-            fill={shape.stroke}
+            fill={shape.fill ?? shape.stroke}
             tension={shape.curvature}
             dash={shape.dash}
             pointerLength={shape.strokeWidth * 4}

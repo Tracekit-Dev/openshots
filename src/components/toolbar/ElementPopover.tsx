@@ -405,7 +405,7 @@ function AnnotationControls({
                   setStrokeColor(color);
                   switch (annotation.type) {
                     case "arrow":
-                      updateAnnotation(annotation.id, { stroke: color });
+                      updateAnnotation(annotation.id, { stroke: color, fill: color });
                       break;
                     case "rectangle":
                       updateAnnotation(annotation.id, {
@@ -438,6 +438,65 @@ function AnnotationControls({
           })}
         </div>
       </div>
+
+      {/* Fill Color -- shapes and arrows */}
+      {(annotation.type === "rectangle" || annotation.type === "ellipse" || annotation.type === "arrow") && (
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-[11px] text-zinc-500">Fill</label>
+            <button
+              onClick={() => {
+                const current = (annotation as { fill?: string }).fill ?? (annotation as { stroke: string }).stroke;
+                updateAnnotation(annotation.id, {
+                  fill: current === "transparent" ? `${(annotation as { stroke: string }).stroke}40` : "transparent",
+                });
+              }}
+              className={`px-2 py-0.5 text-[11px] rounded-md transition-colors duration-150 ${
+                (annotation as { fill?: string }).fill === "transparent"
+                  ? "bg-zinc-800/60 text-zinc-500"
+                  : "bg-zinc-700/60 text-zinc-300"
+              }`}
+            >
+              {(annotation as { fill?: string }).fill === "transparent" ? "None" : "On"}
+            </button>
+          </div>
+          {(annotation as { fill?: string }).fill !== "transparent" && (
+            <div className="flex flex-wrap gap-1">
+              {COLOR_PRESETS.map((color) => (
+                <button
+                  key={`fill-${color}`}
+                  onClick={() => updateAnnotation(annotation.id, { fill: color })}
+                  className={`w-6 h-6 rounded-md border transition-[transform,border-color] duration-150 ${
+                    (annotation as { fill?: string }).fill === color
+                      ? "border-white scale-110"
+                      : "border-zinc-700 hover:border-zinc-500"
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+              {/* Semi-transparent versions */}
+              {["20", "40", "60", "80"].map((alpha) => {
+                const baseColor = (annotation as { stroke: string }).stroke;
+                const fillVal = `${baseColor}${alpha}`;
+                return (
+                  <button
+                    key={`fill-alpha-${alpha}`}
+                    onClick={() => updateAnnotation(annotation.id, { fill: fillVal })}
+                    className={`w-6 h-6 rounded-md border transition-[transform,border-color] duration-150 text-[9px] text-zinc-400 ${
+                      (annotation as { fill?: string }).fill === fillVal
+                        ? "border-white scale-110"
+                        : "border-zinc-700 hover:border-zinc-500"
+                    }`}
+                    style={{ backgroundColor: fillVal }}
+                  >
+                    {Number(alpha) / 100 * 100}%
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stroke Width presets */}
       {(annotation.type === "arrow" ||

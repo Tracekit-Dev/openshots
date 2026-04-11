@@ -55,6 +55,7 @@ export interface ArrowAnnotation extends AnnotationBase {
   type: "arrow";
   points: number[];
   stroke: string;
+  fill?: string;
   strokeWidth: number;
   curvature: number;
   dash?: number[];
