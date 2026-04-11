@@ -215,6 +215,8 @@ pub fn run() {
             commands::export::save_temp_export,
             commands::share::share_file,
             commands::tray::update_tray_menu,
+            commands::preview::show_capture_preview,
+            commands::preview::dismiss_preview,
             update_hotkeys,
         ])
         .run(tauri::generate_context!())

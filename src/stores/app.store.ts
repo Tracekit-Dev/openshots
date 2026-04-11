@@ -35,6 +35,12 @@ interface AppState {
 
   regionScreenshotPath: string | null;
   setRegionScreenshotPath: (path: string | null) => void;
+
+  defaultSaveDir: string | null;
+  setDefaultSaveDir: (dir: string | null) => void;
+
+  defaultSaveFormat: "png" | "jpeg" | "webp";
+  setDefaultSaveFormat: (format: "png" | "jpeg" | "webp") => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -54,10 +60,20 @@ export const useAppStore = create<AppState>()(
 
       regionScreenshotPath: null,
       setRegionScreenshotPath: (path) => set({ regionScreenshotPath: path }),
+
+      defaultSaveDir: null,
+      setDefaultSaveDir: (dir) => set({ defaultSaveDir: dir }),
+
+      defaultSaveFormat: "png",
+      setDefaultSaveFormat: (format) => set({ defaultSaveFormat: format }),
     }),
     {
       name: "app-store",
-      partialize: (state) => ({ hotkeys: state.hotkeys }),
+      partialize: (state) => ({
+        hotkeys: state.hotkeys,
+        defaultSaveDir: state.defaultSaveDir,
+        defaultSaveFormat: state.defaultSaveFormat,
+      }),
     },
   ),
 );

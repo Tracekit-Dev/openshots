@@ -163,9 +163,21 @@ export const useProjectStore = create<ProjectMeta>()((set) => ({
   markDirty: () => set({ isDirty: true }),
 }));
 
+// ---------------------------------------------------------------------------
+// Dirty-flag suppression (used during loadProject to avoid false dirty state)
+// ---------------------------------------------------------------------------
+let suppressDirtyFlag = false;
+export function suppressNextDirty() {
+  suppressDirtyFlag = true;
+}
+
 // Subscribe to canvas state changes to auto-set dirty flag.
 // The temporal store's partialize already isolates the data fields we care about.
 useCanvasStore.subscribe(() => {
+  if (suppressDirtyFlag) {
+    suppressDirtyFlag = false;
+    return;
+  }
   useProjectStore.getState().markDirty();
 });
 
@@ -178,6 +190,9 @@ useCanvasStore.subscribe(() => {
  * Resets undo history and updates project meta.
  */
 export function loadProject(projectFile: ProjectFile, filePath: string): void {
+  // Suppress the dirty flag that would fire from setState
+  suppressNextDirty();
+
   // Apply all canvas state atomically
   useCanvasStore.setState({
     canvasWidth: projectFile.canvas.width,

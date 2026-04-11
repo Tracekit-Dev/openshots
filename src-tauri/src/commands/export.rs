@@ -78,6 +78,11 @@ pub async fn export_image(
 /// Used by the frontend to save project files (.openshots JSON).
 #[tauri::command]
 pub async fn save_text_file(path: String, contents: String) -> Result<String, String> {
+    // Ensure parent directories exist (needed for auto-save to $APP_DATA/projects/)
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create directories: {e}"))?;
+    }
     std::fs::write(&path, contents.as_bytes())
         .map_err(|e| format!("Failed to write file: {e}"))?;
     Ok(path)
