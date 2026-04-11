@@ -219,6 +219,7 @@ export default function AnnotationLayer() {
 
     const common = {
       ...refProp,
+      id: shape.id,
       x: shape.x,
       y: shape.y,
       rotation: shape.rotation,

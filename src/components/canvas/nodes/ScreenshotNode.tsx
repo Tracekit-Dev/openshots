@@ -270,6 +270,7 @@ export default function ScreenshotNode({
 
       <Group
         ref={groupRef}
+        id={data.id}
         x={data.x}
         y={data.y}
         width={totalW}
