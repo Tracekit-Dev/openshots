@@ -1,5 +1,5 @@
-import { Layer, Arrow, Rect, Ellipse, Text, Circle, Group, Transformer } from "react-konva";
-import { useCanvasStore, type AnnotationShape } from "../../stores/canvas.store";
+import { Layer, Arrow, Rect, Ellipse, Text, Circle, Group, Line, Shape, Transformer } from "react-konva";
+import { useCanvasStore, type AnnotationShape, type SpeechBubbleAnnotation } from "../../stores/canvas.store";
 import { useRef, useEffect, useState, useCallback } from "react";
 import Konva from "konva";
 
@@ -48,6 +48,14 @@ export default function AnnotationLayer() {
         y: node.y(),
         radiusX: Math.round(shape.radiusX * scaleX),
         radiusY: Math.round(shape.radiusY * scaleY),
+        rotation: node.rotation(),
+      });
+    } else if (shape.type === "speech-bubble" || shape.type === "spotlight") {
+      updateAnnotation(shape.id, {
+        x: node.x(),
+        y: node.y(),
+        width: Math.round(shape.width * scaleX),
+        height: Math.round(shape.height * scaleY),
         rotation: node.rotation(),
       });
     } else if (shape.type === "text" || shape.type === "emoji") {
@@ -109,6 +117,73 @@ export default function AnnotationLayer() {
       textarea.style.zIndex = "10000";
       textarea.style.minWidth = "60px";
       textarea.style.minHeight = "30px";
+      textarea.focus();
+      textarea.select();
+
+      const finishEdit = () => {
+        const newText = textarea.value;
+        if (newText && newText !== shape.text) {
+          updateAnnotation(shape.id, { text: newText });
+        }
+        document.body.removeChild(textarea);
+        node.show();
+        layer?.batchDraw();
+        setEditingTextId(null);
+      };
+
+      textarea.addEventListener("blur", finishEdit);
+      textarea.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          textarea.blur();
+        }
+        if (e.key === "Escape") {
+          textarea.value = shape.text;
+          textarea.blur();
+        }
+      });
+    },
+    [updateAnnotation],
+  );
+
+  // Inline text editing for speech bubbles via double-click
+  const handleBubbleDblClick = useCallback(
+    (shape: SpeechBubbleAnnotation, node: Konva.Node) => {
+      setEditingTextId(shape.id);
+      node.hide();
+      const layer = node.getLayer();
+      layer?.batchDraw();
+
+      const stage = node.getStage();
+      if (!stage) return;
+
+      const pos = node.absolutePosition();
+      const stageBox = stage.container().getBoundingClientRect();
+      const areaPosition = {
+        x: stageBox.left + pos.x * stage.scaleX(),
+        y: stageBox.top + pos.y * stage.scaleY(),
+      };
+
+      const textarea = document.createElement("textarea");
+      document.body.appendChild(textarea);
+      textarea.value = shape.text;
+      textarea.style.position = "fixed";
+      textarea.style.top = `${areaPosition.y}px`;
+      textarea.style.left = `${areaPosition.x}px`;
+      textarea.style.width = `${shape.width * stage.scaleX()}px`;
+      textarea.style.height = `${shape.height * stage.scaleY()}px`;
+      textarea.style.fontSize = `${shape.fontSize * stage.scaleX()}px`;
+      textarea.style.fontFamily = shape.fontFamily;
+      textarea.style.color = shape.textColor;
+      textarea.style.background = "rgba(0,0,0,0.8)";
+      textarea.style.border = "1px solid rgba(255,255,255,0.2)";
+      textarea.style.borderRadius = "4px";
+      textarea.style.padding = "4px 6px";
+      textarea.style.outline = "none";
+      textarea.style.resize = "none";
+      textarea.style.lineHeight = "1.2";
+      textarea.style.zIndex = "10000";
+      textarea.style.textAlign = "center";
       textarea.focus();
       textarea.select();
 
@@ -260,6 +335,126 @@ export default function AnnotationLayer() {
             fontSize={shape.fontSize}
           />
         );
+      case "speech-bubble": {
+        const getTailPoints = (dir: string, w: number, h: number, size: number): number[] => {
+          const halfSize = size / 2;
+          switch (dir) {
+            case "bottom":
+              return [w / 2 - halfSize, h, w / 2, h + size, w / 2 + halfSize, h];
+            case "top":
+              return [w / 2 - halfSize, 0, w / 2, -size, w / 2 + halfSize, 0];
+            case "left":
+              return [0, h / 2 - halfSize, -size, h / 2, 0, h / 2 + halfSize];
+            case "right":
+              return [w, h / 2 - halfSize, w + size, h / 2, w, h / 2 + halfSize];
+            default:
+              return [w / 2 - halfSize, h, w / 2, h + size, w / 2 + halfSize, h];
+          }
+        };
+        return (
+          <Group
+            key={shape.id}
+            {...common}
+            visible={editingTextId !== shape.id}
+            onDblClick={(e) => {
+              const node = e.target.getParent();
+              if (node) handleBubbleDblClick(shape, node);
+            }}
+            onDblTap={(e) => {
+              const node = e.target.getParent();
+              if (node) handleBubbleDblClick(shape, node);
+            }}
+          >
+            <Rect
+              width={shape.width}
+              height={shape.height}
+              fill={shape.fill}
+              stroke={shape.stroke}
+              strokeWidth={shape.strokeWidth}
+              cornerRadius={shape.cornerRadius}
+            />
+            <Line
+              points={getTailPoints(shape.tailDirection, shape.width, shape.height, shape.tailSize)}
+              fill={shape.fill}
+              stroke={shape.stroke}
+              strokeWidth={shape.strokeWidth}
+              closed
+            />
+            <Text
+              text={shape.text}
+              fontSize={shape.fontSize}
+              fontFamily={shape.fontFamily}
+              fill={shape.textColor}
+              width={shape.width - 16}
+              height={shape.height - 8}
+              x={8}
+              y={4}
+              align="center"
+              verticalAlign="middle"
+              listening={false}
+            />
+          </Group>
+        );
+      }
+      case "spotlight": {
+        const canvasW = useCanvasStore.getState().canvasWidth;
+        const canvasH = useCanvasStore.getState().canvasHeight;
+        return (
+          <Group
+            key={shape.id}
+            {...common}
+          >
+            <Shape
+              sceneFunc={(context, konvaShape) => {
+                const ctx = context._context;
+                // Draw full-canvas overlay
+                ctx.save();
+                ctx.globalCompositeOperation = "source-over";
+                ctx.fillStyle = shape.overlayColor;
+                ctx.globalAlpha = shape.overlayOpacity;
+                ctx.fillRect(-shape.x, -shape.y, canvasW, canvasH);
+                ctx.restore();
+                // Punch out the cutout
+                ctx.save();
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.globalAlpha = 1;
+                if (shape.cornerRadius > 0) {
+                  const r = shape.cornerRadius;
+                  ctx.beginPath();
+                  ctx.moveTo(r, 0);
+                  ctx.lineTo(shape.width - r, 0);
+                  ctx.arcTo(shape.width, 0, shape.width, r, r);
+                  ctx.lineTo(shape.width, shape.height - r);
+                  ctx.arcTo(shape.width, shape.height, shape.width - r, shape.height, r);
+                  ctx.lineTo(r, shape.height);
+                  ctx.arcTo(0, shape.height, 0, shape.height - r, r);
+                  ctx.lineTo(0, shape.height - r);
+                  ctx.arcTo(0, 0, r, 0, r);
+                  ctx.closePath();
+                  ctx.fill();
+                } else {
+                  ctx.fillRect(0, 0, shape.width, shape.height);
+                }
+                ctx.restore();
+                context.fillStrokeShape(konvaShape);
+              }}
+              width={shape.width}
+              height={shape.height}
+              listening={false}
+            />
+            {/* Visible border around the cutout for selection */}
+            <Rect
+              width={shape.width}
+              height={shape.height}
+              stroke="rgba(255,255,255,0.3)"
+              strokeWidth={1}
+              cornerRadius={shape.cornerRadius}
+              dash={[4, 4]}
+              hitStrokeWidth={10}
+            />
+          </Group>
+        );
+      }
     }
   };
 

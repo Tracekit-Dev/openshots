@@ -15,7 +15,7 @@ import type { ProgressInfo } from "../../lib/background-removal/types";
 
 interface CanvasStageProps {
   stageRef: React.RefObject<Konva.Stage | null>;
-  onBackgroundClick?: (position: { x: number; y: number }) => void;
+  onBackgroundClick?: (pos: { x: number; y: number }) => void;
 }
 
 export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStageProps) {
@@ -351,10 +351,10 @@ export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStage
       if (activeTool === "select") {
         if (e.target === e.target.getStage()) {
           setSelectedId(null);
-          // Trigger background popover on background click
           if (onBackgroundClick) {
-            const nativeEvt = e.evt as MouseEvent;
-            onBackgroundClick({ x: nativeEvt.clientX, y: nativeEvt.clientY });
+            const rect = (e.target as unknown as HTMLElement).getBoundingClientRect?.();
+            const evt = e.evt as MouseEvent;
+            onBackgroundClick({ x: evt.clientX, y: evt.clientY });
           }
         }
         return;
@@ -459,6 +459,43 @@ export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStage
           setActiveTool("select");
           break;
         }
+        case "speech-bubble":
+          addAnnotation({
+            id,
+            type: "speech-bubble",
+            x,
+            y,
+            width: 200,
+            height: 80,
+            text: "Hello!",
+            fontSize: 16,
+            fontFamily: "-apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif",
+            fill: "#ffffff",
+            textColor: "#1a1a1a",
+            stroke: strokeColor,
+            strokeWidth: 2,
+            cornerRadius: 12,
+            tailDirection: "bottom",
+            tailSize: 16,
+            rotation: 0,
+          });
+          setActiveTool("select");
+          break;
+        case "spotlight":
+          addAnnotation({
+            id,
+            type: "spotlight",
+            x,
+            y,
+            width: 200,
+            height: 150,
+            cornerRadius: 8,
+            overlayOpacity: 0.6,
+            overlayColor: "#000000",
+            rotation: 0,
+          });
+          setActiveTool("select");
+          break;
         case "blur":
         case "pixelate":
           addPrivacyRegion({
@@ -488,7 +525,6 @@ export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStage
       fontSize,
       selectedEmoji,
       setActiveTool,
-      onBackgroundClick,
     ],
   );
 

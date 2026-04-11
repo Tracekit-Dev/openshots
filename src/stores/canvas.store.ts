@@ -1,13 +1,7 @@
 import { create } from "zustand";
 import { temporal } from "zundo";
-import type { FrameType, FrameTheme } from "../components/composition/frames";
 
 // ---------- Types ----------
-
-export interface ImageFrame {
-  type: FrameType;
-  theme?: FrameTheme;
-}
 
 export interface CanvasImage {
   id: string;
@@ -32,7 +26,11 @@ export interface CanvasImage {
     color: string;
     width: number;
   };
-  frame?: ImageFrame;
+  frame?: {
+    type: "window-chrome" | "device-mockup";
+    variant: string;
+    theme?: "light" | "dark";
+  };
 }
 
 export type AnnotationType =
@@ -41,7 +39,9 @@ export type AnnotationType =
   | "ellipse"
   | "text"
   | "emoji"
-  | "callout";
+  | "callout"
+  | "speech-bubble"
+  | "spotlight";
 
 export interface AnnotationBase {
   id: string;
@@ -105,13 +105,40 @@ export interface CalloutAnnotation extends AnnotationBase {
   textColor: string;
 }
 
+export interface SpeechBubbleAnnotation extends AnnotationBase {
+  type: "speech-bubble";
+  width: number;
+  height: number;
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+  fill: string;
+  textColor: string;
+  stroke: string;
+  strokeWidth: number;
+  cornerRadius: number;
+  tailDirection: "bottom" | "top" | "left" | "right";
+  tailSize: number;
+}
+
+export interface SpotlightAnnotation extends AnnotationBase {
+  type: "spotlight";
+  width: number;
+  height: number;
+  cornerRadius: number;
+  overlayOpacity: number;
+  overlayColor: string;
+}
+
 export type AnnotationShape =
   | ArrowAnnotation
   | RectAnnotation
   | EllipseAnnotation
   | TextAnnotation
   | EmojiAnnotation
-  | CalloutAnnotation;
+  | CalloutAnnotation
+  | SpeechBubbleAnnotation
+  | SpotlightAnnotation;
 
 export interface PrivacyRegion {
   id: string;
@@ -170,7 +197,6 @@ interface CanvasActions {
   // Images
   addImage: (image: CanvasImage) => void;
   updateImage: (id: string, updates: Partial<CanvasImage>) => void;
-  updateImageFrame: (id: string, frame: ImageFrame | undefined) => void;
   removeImage: (id: string) => void;
 
   // Annotations
@@ -226,12 +252,6 @@ export const useCanvasStore = create<CanvasState & CanvasActions>()(
         set((s) => ({
           images: s.images.map((img) =>
             img.id === id ? { ...img, ...updates } : img,
-          ),
-        })),
-      updateImageFrame: (id, frame) =>
-        set((s) => ({
-          images: s.images.map((img) =>
-            img.id === id ? { ...img, frame } : img,
           ),
         })),
       removeImage: (id) =>

@@ -1,18 +1,7 @@
 import { useCanvasStore } from "../../stores/canvas.store";
-import type { ImageFrame } from "../../stores/canvas.store";
 import { useToolStore, COLOR_PRESETS } from "../../stores/tool.store";
 import { extractDominantColor } from "../../lib/colorAnalysis";
 import { computeFanLayout } from "../../lib/fanLayout";
-import type { FrameType } from "../../components/composition/frames";
-
-const FRAME_OPTIONS: { type: FrameType; label: string; icon: string }[] = [
-  { type: "none", label: "None", icon: "N" },
-  { type: "macos", label: "macOS", icon: "\u25CF\u25CF\u25CF" },
-  { type: "windows", label: "Windows", icon: "\u2013\u25A1\u00D7" },
-  { type: "iphone", label: "iPhone", icon: "\u25AF" },
-  { type: "ipad", label: "iPad", icon: "\u25AD" },
-  { type: "macbook", label: "MacBook", icon: "\u2394" },
-];
 
 export default function StylePanel() {
   const images = useCanvasStore((s) => s.images);
@@ -29,8 +18,6 @@ export default function StylePanel() {
   const updateAnnotation = useCanvasStore((s) => s.updateAnnotation);
   const setStrokeWidth = useToolStore((s) => s.setStrokeWidth);
   const setStrokeColor = useToolStore((s) => s.setStrokeColor);
-
-  const updateImageFrame = useCanvasStore((s) => s.updateImageFrame);
 
   const selected = images.find((img) => img.id === selectedId);
   const selectedPrivacy = privacyRegions.find((r) => r.id === selectedId);
@@ -222,66 +209,6 @@ export default function StylePanel() {
               Flip V
             </button>
           </div>
-
-          {/* Frame */}
-          <div className="border-t border-zinc-800/60 pt-3 mt-3 space-y-2">
-            <p className="text-[11px] text-zinc-500 mb-2">Frame</p>
-            <div className="grid grid-cols-3 gap-1">
-              {FRAME_OPTIONS.map((opt) => {
-                const currentType = selected.frame?.type ?? "none";
-                const isActive = currentType === opt.type;
-                return (
-                  <button
-                    key={opt.type}
-                    onClick={() => {
-                      if (opt.type === "none") {
-                        updateImageFrame(selected.id, undefined);
-                      } else {
-                        const theme = (opt.type === "macos" || opt.type === "windows")
-                          ? (selected.frame?.theme ?? "dark")
-                          : undefined;
-                        updateImageFrame(selected.id, { type: opt.type, theme } as ImageFrame);
-                      }
-                    }}
-                    className={`flex flex-col items-center gap-0.5 px-1 py-2 rounded-md text-[11px] transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none ${
-                      isActive
-                        ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500"
-                        : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
-                    }`}
-                  >
-                    <span className="text-[14px] leading-none">{opt.icon}</span>
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Light/Dark theme toggle for window chrome frames */}
-            {(selected.frame?.type === "macos" || selected.frame?.type === "windows") && (
-              <div className="flex gap-1">
-                <button
-                  onClick={() => updateImageFrame(selected.id, { ...selected.frame!, theme: "light" })}
-                  className={`flex-1 px-3 py-1.5 text-[12px] rounded-md transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none ${
-                    selected.frame?.theme === "light"
-                      ? "bg-zinc-100 text-zinc-900"
-                      : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
-                  }`}
-                >
-                  Light
-                </button>
-                <button
-                  onClick={() => updateImageFrame(selected.id, { ...selected.frame!, theme: "dark" })}
-                  className={`flex-1 px-3 py-1.5 text-[12px] rounded-md transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none ${
-                    (selected.frame?.theme ?? "dark") === "dark"
-                      ? "bg-zinc-100 text-zinc-900"
-                      : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
-                  }`}
-                >
-                  Dark
-                </button>
-              </div>
-            )}
-          </div>
         </>
       )}
 
@@ -454,6 +381,151 @@ export default function StylePanel() {
                 })}
               </div>
             </div>
+          )}
+
+          {/* Speech bubble color handling */}
+          {selectedAnnotation.type === "speech-bubble" && (
+            <>
+              <div className="space-y-2">
+                <label className="text-[11px] text-zinc-500">Bubble Color</label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {COLOR_PRESETS.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => updateAnnotation(selectedAnnotation.id, { stroke: color })}
+                      className={`w-6 h-6 rounded-md border transition-[transform,border-color] duration-150 outline-none ${
+                        (selectedAnnotation as { stroke: string }).stroke === color ? "border-white scale-110" : "border-zinc-700 hover:border-zinc-500"
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Spotlight color handling */}
+          {selectedAnnotation.type === "spotlight" && (
+            <div className="space-y-2">
+              <label className="text-[11px] text-zinc-500">Overlay Color</label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {COLOR_PRESETS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => updateAnnotation(selectedAnnotation.id, { overlayColor: color })}
+                    className={`w-6 h-6 rounded-md border transition-[transform,border-color] duration-150 outline-none ${
+                      (selectedAnnotation as { overlayColor: string }).overlayColor === color ? "border-white scale-110" : "border-zinc-700 hover:border-zinc-500"
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Speech Bubble controls */}
+          {selectedAnnotation.type === "speech-bubble" && (
+            <>
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-zinc-500 w-12">Tail</label>
+                <div className="flex gap-1">
+                  {(["top", "bottom", "left", "right"] as const).map((dir) => (
+                    <button
+                      key={dir}
+                      onClick={() => updateAnnotation(selectedAnnotation.id, { tailDirection: dir })}
+                      className={`px-2 py-1 text-[12px] rounded-md transition-colors duration-150 outline-none ${
+                        (selectedAnnotation as { tailDirection: string }).tailDirection === dir
+                          ? "bg-zinc-100 text-zinc-900"
+                          : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
+                      }`}
+                    >
+                      {dir.charAt(0).toUpperCase() + dir.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-zinc-500 w-12">Font</label>
+                <input
+                  type="range"
+                  min={10}
+                  max={32}
+                  step={1}
+                  value={(selectedAnnotation as { fontSize: number }).fontSize}
+                  onChange={(e) => updateAnnotation(selectedAnnotation.id, { fontSize: Number(e.target.value) })}
+                  className="flex-1 accent-zinc-400"
+                />
+                <span className="text-[11px] text-zinc-500 w-7 text-right">
+                  {(selectedAnnotation as { fontSize: number }).fontSize}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-zinc-500 w-12">Text</label>
+                <div className="flex flex-wrap gap-1">
+                  {["#1A1A1A", "#FFFFFF", "#E03E3E", "#2563EB", "#16A34A"].map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => updateAnnotation(selectedAnnotation.id, { textColor: color })}
+                      className={`w-5 h-5 rounded-full border transition-[transform,border-color] duration-150 outline-none ${
+                        (selectedAnnotation as { textColor: string }).textColor === color ? "border-white scale-110" : "border-zinc-700 hover:border-zinc-500"
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-zinc-500 w-12">Fill</label>
+                <div className="flex flex-wrap gap-1">
+                  {["#ffffff", "#1A1A1A", "#FEF3C7", "#DBEAFE", "#DCFCE7"].map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => updateAnnotation(selectedAnnotation.id, { fill: color })}
+                      className={`w-5 h-5 rounded-full border transition-[transform,border-color] duration-150 outline-none ${
+                        (selectedAnnotation as { fill: string }).fill === color ? "border-white scale-110" : "border-zinc-700 hover:border-zinc-500"
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Spotlight controls */}
+          {selectedAnnotation.type === "spotlight" && (
+            <>
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-zinc-500 w-12">Opacity</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={Math.round(((selectedAnnotation as { overlayOpacity: number }).overlayOpacity ?? 0.6) * 100)}
+                  onChange={(e) => updateAnnotation(selectedAnnotation.id, { overlayOpacity: Number(e.target.value) / 100 })}
+                  className="flex-1 accent-zinc-400"
+                />
+                <span className="text-[11px] text-zinc-500 w-7 text-right">
+                  {Math.round(((selectedAnnotation as { overlayOpacity: number }).overlayOpacity ?? 0.6) * 100)}%
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-zinc-500 w-12">Radius</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={24}
+                  step={1}
+                  value={(selectedAnnotation as { cornerRadius: number }).cornerRadius ?? 8}
+                  onChange={(e) => updateAnnotation(selectedAnnotation.id, { cornerRadius: Number(e.target.value) })}
+                  className="flex-1 accent-zinc-400"
+                />
+                <span className="text-[11px] text-zinc-500 w-7 text-right">
+                  {(selectedAnnotation as { cornerRadius: number }).cornerRadius ?? 8}
+                </span>
+              </div>
+            </>
           )}
 
           {/* Font Size -- text annotations only */}
