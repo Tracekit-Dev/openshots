@@ -103,6 +103,8 @@ export default function App() {
   const regionScreenshotPath = useAppStore((s) => s.regionScreenshotPath);
   const setRegionScreenshotPath = useAppStore((s) => s.setRegionScreenshotPath);
   const images = useCanvasStore((s) => s.images);
+  const selfTimerDelay = useAppStore((s) => s.selfTimerDelay);
+  const setSelfTimerDelay = useAppStore((s) => s.setSelfTimerDelay);
   const [view, setView] = useState<View>("main");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [bgPopover, setBgPopover] = useState<{ x: number; y: number } | null>(null);
@@ -319,6 +321,25 @@ export default function App() {
         >
           Upload
         </button>
+
+        <div className="w-px h-4 bg-zinc-800/60 mx-1" />
+
+        {/* Self-timer toggle */}
+        <div className="flex items-center gap-0.5">
+          {[0, 3, 5, 10].map((delay) => (
+            <button
+              key={delay}
+              onClick={() => setSelfTimerDelay(delay as 0 | 3 | 5 | 10)}
+              className={`px-2 py-1 text-[11px] rounded-md transition-colors ${
+                selfTimerDelay === delay
+                  ? "bg-zinc-100 text-zinc-900"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {delay === 0 ? "No Timer" : `${delay}s`}
+            </button>
+          ))}
+        </div>
 
         <div className="flex-1" />
 
