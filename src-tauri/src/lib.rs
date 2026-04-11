@@ -153,6 +153,39 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(PlatformFlags { is_wayland })
+        .menu(|app| {
+            use tauri::menu::*;
+            let file_menu = SubmenuBuilder::new(app, "File")
+                .item(&MenuItem::with_id(app, "file-open", "Open Project…", true, Some("CmdOrCtrl+O"))?)
+                .item(&MenuItem::with_id(app, "file-save", "Save Project", true, Some("CmdOrCtrl+S"))?)
+                .separator()
+                .item(&MenuItem::with_id(app, "file-export", "Export…", true, Some("CmdOrCtrl+E"))?)
+                .separator()
+                .quit()
+                .build()?;
+            let edit_menu = SubmenuBuilder::new(app, "Edit")
+                .undo()
+                .redo()
+                .separator()
+                .cut()
+                .copy()
+                .paste()
+                .select_all()
+                .build()?;
+            let menu = MenuBuilder::new(app)
+                .item(&file_menu)
+                .item(&edit_menu)
+                .build()?;
+            Ok(menu)
+        })
+        .on_menu_event(|app, event| {
+            match event.id().as_ref() {
+                "file-open" => { let _ = app.emit("menu:open-project", ()); }
+                "file-save" => { let _ = app.emit("menu:save-project", ()); }
+                "file-export" => { let _ = app.emit("menu:export", ()); }
+                _ => {}
+            }
+        })
         .setup(move |app| {
             let handle = app.handle();
             setup_tray(handle)?;

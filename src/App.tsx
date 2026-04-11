@@ -224,6 +224,24 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Menu bar events (File > Open, File > Save, File > Export)
+  useEffect(() => {
+    const listeners = [
+      listen("menu:open-project", () => {
+        import("./lib/project-file").then((m) => m.openProject());
+      }),
+      listen("menu:save-project", () => {
+        import("./lib/project-file").then((m) => m.saveProject());
+      }),
+      listen("menu:export", () => {
+        // Focus the export panel — trigger via DOM click on export button if available
+        const exportBtn = document.querySelector("[data-export-trigger]") as HTMLButtonElement | null;
+        if (exportBtn) exportBtn.click();
+      }),
+    ];
+    return () => { listeners.forEach((p) => p.then((fn) => fn())); };
+  }, []);
+
   // Region selection overlay
   if (captureState === "selecting-region" && regionScreenshotPath) {
     return (
