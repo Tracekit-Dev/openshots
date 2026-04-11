@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useCanvasStore } from "../../stores/canvas.store";
 import { usePresetStore, type CanvasPreset } from "../../stores/preset.store";
 import { ASPECT_RATIOS, canvasSize } from "../../lib/aspectRatios";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readImageFile, listSystemWallpapers, convertHeicThumbnail, convertHeicToDataUrl } from "../../ipc/capture";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, GripHorizontal } from "lucide-react";
 
 // macOS-style vibrant gradients
 const GRADIENT_PRESETS: [string, string][] = [
@@ -59,6 +59,27 @@ function Section({ title, defaultOpen = true, children }: { title: string; defau
 export default function BackgroundPopover({ position, onClose }: BackgroundPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const offsetX = dragOffset.x;
+    const offsetY = dragOffset.y;
+
+    const onMove = (ev: MouseEvent) => {
+      setDragOffset({
+        x: offsetX + (ev.clientX - startX),
+        y: offsetY + (ev.clientY - startY),
+      });
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [dragOffset]);
 
   const background = useCanvasStore((s) => s.background);
   const setBackground = useCanvasStore((s) => s.setBackground);
@@ -245,8 +266,16 @@ export default function BackgroundPopover({ position, onClose }: BackgroundPopov
       className={`fixed z-50 w-72 max-h-[80vh] overflow-y-auto bg-zinc-900 border border-zinc-700/60 rounded-xl shadow-2xl p-4 space-y-4 transition-all duration-150 ${
         visible ? "opacity-100 scale-100" : "opacity-0 scale-95"
       }`}
-      style={{ left: Math.max(8, x), top: Math.max(8, y) }}
+      style={{ left: Math.max(8, x) + dragOffset.x, top: Math.max(8, y) + dragOffset.y }}
     >
+      {/* Drag handle */}
+      <div
+        onMouseDown={handleDragStart}
+        className="flex items-center justify-center cursor-grab active:cursor-grabbing -mt-1 mb-2"
+      >
+        <GripHorizontal size={14} className="text-zinc-600" />
+      </div>
+
       {/* Section 1: Background */}
       <Section title="Background" defaultOpen>
         {/* Type selector */}
