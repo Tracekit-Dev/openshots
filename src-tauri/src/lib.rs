@@ -206,6 +206,7 @@ pub fn run() {
             commands::export::export_image,
             commands::export::save_text_file,
             commands::export::read_text_file,
+            commands::export::save_temp_export,
             commands::share::share_file,
             update_hotkeys,
         ])

@@ -90,3 +90,48 @@ pub async fn read_text_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read file: {e}"))
 }
+
+/// Write raw RGBA pixel data as a PNG to a temp file for drag-to-destination sharing.
+/// Returns the absolute path to the temp PNG file.
+#[tauri::command]
+pub async fn save_temp_export(
+    image_data: Vec<u8>,
+    width: u32,
+    height: u32,
+) -> Result<String, String> {
+    // T-12-04: Validate image_data length matches width*height*4 to prevent panic
+    let expected_len = (width as usize) * (height as usize) * 4;
+    if image_data.len() != expected_len {
+        return Err(format!(
+            "Invalid image data: expected {} bytes ({}x{}x4), got {}",
+            expected_len, width, height, image_data.len()
+        ));
+    }
+
+    let img: ImageBuffer<Rgba<u8>, Vec<u8>> =
+        ImageBuffer::from_raw(width, height, image_data)
+            .ok_or_else(|| "Invalid image data dimensions".to_string())?;
+
+    let temp_dir = std::env::temp_dir().join("openshots");
+    std::fs::create_dir_all(&temp_dir)
+        .map_err(|e| format!("Failed to create temp directory: {e}"))?;
+
+    let output_path = temp_dir.join("drag-export.png");
+    let file = std::fs::File::create(&output_path)
+        .map_err(|e| format!("Failed to create temp file: {e}"))?;
+    let writer = std::io::BufWriter::new(file);
+
+    image::codecs::png::PngEncoder::new(writer)
+        .write_image(
+            img.as_raw(),
+            width,
+            height,
+            image::ExtendedColorType::Rgba8,
+        )
+        .map_err(|e| format!("PNG encoding failed: {e}"))?;
+
+    output_path
+        .to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| "Failed to convert path to string".to_string())
+}

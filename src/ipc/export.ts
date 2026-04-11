@@ -52,3 +52,19 @@ export async function exportCanvas(
     privacyRegions: options.privacyRegions ?? null,
   });
 }
+
+/**
+ * Render canvas pixels to a temp PNG file for drag-to-destination sharing.
+ * Returns the absolute path to the temp file.
+ */
+export async function saveTempExport(
+  imageData: Uint8Array,
+  width: number,
+  height: number,
+): Promise<string> {
+  return invoke<string>("save_temp_export", {
+    imageData: Array.from(imageData),
+    width,
+    height,
+  });
+}
