@@ -25,13 +25,14 @@ export default function ScreenshotLayer() {
     <>
       <Layer>
         {images.map((img) => {
-          // Contain-fit: shrink images that exceed the padded area
-          // Images smaller than available space keep their stored size (resize persists)
-          const exceedsW = img.width > availW;
-          const exceedsH = img.height > availH;
-          let displayW = img.width;
-          let displayH = img.height;
-          if (exceedsW || exceedsH) {
+          // If user manually resized, use their dimensions as-is
+          // Otherwise, contain-fit using natural dimensions (padding works)
+          let displayW: number;
+          let displayH: number;
+          if (img.userResized) {
+            displayW = img.width;
+            displayH = img.height;
+          } else {
             const fitScale = Math.min(availW / img.width, availH / img.height);
             displayW = Math.round(img.width * fitScale);
             displayH = Math.round(img.height * fitScale);

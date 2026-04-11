@@ -183,6 +183,7 @@ export default function ScreenshotNode({
       width: Math.round(displayWidth * scaleX),
       height: Math.round(displayHeight * scaleY),
       rotation: node.rotation(),
+      userResized: true,
     });
   };
 

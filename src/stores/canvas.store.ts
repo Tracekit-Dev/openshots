@@ -10,6 +10,9 @@ export interface CanvasImage {
   y: number;
   width: number;
   height: number;
+  naturalWidth?: number;   // original image dimensions (for padding contain-fit)
+  naturalHeight?: number;
+  userResized?: boolean;   // true if user manually resized via Transformer
   rotation: number;
   cornerRadius: number;
   flipX: boolean;
