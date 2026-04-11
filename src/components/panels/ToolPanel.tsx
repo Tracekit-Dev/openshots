@@ -92,7 +92,7 @@ export default function ToolPanel() {
             <button
               key={mode}
               onClick={() => handleToolClick(mode)}
-              className={`px-2 py-1.5 text-[13px] rounded-md flex items-center justify-between transition-colors ${
+              className={`px-2 py-2 text-[13px] rounded-md flex items-center justify-between transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none ${
                 activeTool === mode
                   ? "bg-zinc-100 text-zinc-900"
                   : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
@@ -132,7 +132,7 @@ export default function ToolPanel() {
             <button
               key={color}
               onClick={() => handleColorClick(color)}
-              className={`w-6 h-6 rounded-md border transition-all ${
+              className={`w-6 h-6 rounded-md border transition-[transform,border-color] duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none ${
                 strokeColor === color
                   ? "border-white scale-110"
                   : "border-zinc-700 hover:border-zinc-500"

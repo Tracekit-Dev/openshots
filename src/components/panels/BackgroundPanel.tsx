@@ -151,7 +151,7 @@ export default function BackgroundPanel() {
           <button
             key={value}
             onClick={() => setBackground({ type: value })}
-            className={`px-2 py-1 text-[12px] rounded-md transition-colors ${
+            className={`px-2 py-1 text-[12px] rounded-md transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none ${
               background.type === value
                 ? "bg-zinc-100 text-zinc-900"
                 : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
@@ -167,7 +167,7 @@ export default function BackgroundPanel() {
         <div className="space-y-3">
           <button
             onClick={() => void handleUploadBg()}
-            className="w-full px-3 py-2 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
+            className="w-full px-3 py-2 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none"
           >
             {background.imageSrc ? "Change image" : "Upload image"}
           </button>
@@ -181,14 +181,14 @@ export default function BackgroundPanel() {
           {/* System wallpapers */}
           {wallpapers.length > 0 && (
             <div>
-              <p className="text-[11px] text-zinc-500 mb-1.5">System Wallpapers</p>
-              <div className="grid grid-cols-3 gap-1.5 max-h-48 overflow-y-auto pr-0.5">
+              <p className="text-[11px] text-zinc-500 mb-2">System Wallpapers</p>
+              <div className="grid grid-cols-3 gap-1 max-h-48 overflow-y-auto pr-0.5">
                 {wallpapers.map((wp) => (
                   <button
                     key={wp.path}
                     onClick={() => void handleSelectWallpaper(wp.path)}
                     disabled={loadingWp !== null}
-                    className={`relative h-12 rounded-md border transition-all overflow-hidden ${
+                    className={`relative h-12 rounded-md border transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none overflow-hidden ${
                       loadingWp === wp.path
                         ? "border-zinc-400 opacity-70"
                         : "border-zinc-700/40 hover:border-zinc-400"
@@ -223,12 +223,12 @@ export default function BackgroundPanel() {
 
       {/* Gradient presets */}
       {isGradient && (
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-4 gap-1">
           {GRADIENT_PRESETS.map(([c1, c2], i) => (
             <button
               key={i}
               onClick={() => setBackground({ gradientColors: [c1, c2] })}
-              className="h-7 rounded-md border border-zinc-700/50 hover:border-zinc-500 transition-colors"
+              className="h-7 rounded-md border border-zinc-700/50 hover:border-zinc-500 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none"
               style={{
                 background: `linear-gradient(135deg, ${c1}, ${c2})`,
               }}
@@ -239,12 +239,12 @@ export default function BackgroundPanel() {
 
       {/* Solid color presets */}
       {background.type === "solid" && (
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-4 gap-1">
           {SOLID_PRESETS.map((color) => (
             <button
               key={color}
               onClick={() => setBackground({ color })}
-              className="h-7 rounded-md border border-zinc-700/50 hover:border-zinc-500 transition-colors"
+              className="h-7 rounded-md border border-zinc-700/50 hover:border-zinc-500 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none"
               style={{ background: color }}
             />
           ))}
@@ -265,7 +265,7 @@ export default function BackgroundPanel() {
                     gradientColors: [e.target.value, background.gradientColors[1]],
                   })
             }
-            className="w-7 h-5 rounded cursor-pointer bg-transparent border-0"
+            className="w-7 h-5 rounded cursor-pointer bg-transparent border-0 focus-visible:ring-1 focus-visible:ring-zinc-500"
           />
           {isGradient && (
             <input
@@ -276,7 +276,7 @@ export default function BackgroundPanel() {
                   gradientColors: [background.gradientColors[0], e.target.value],
                 })
               }
-              className="w-7 h-5 rounded cursor-pointer bg-transparent border-0"
+              className="w-7 h-5 rounded cursor-pointer bg-transparent border-0 focus-visible:ring-1 focus-visible:ring-zinc-500"
             />
           )}
         </div>
@@ -285,7 +285,7 @@ export default function BackgroundPanel() {
       {/* Gradient angle */}
       {isGradient && (
         <div className="flex items-center gap-2">
-          <label className="text-[11px] text-zinc-500 w-10">Angle</label>
+          <label className="text-[11px] text-zinc-500 w-12">Angle</label>
           <input
             type="range"
             min={0}
@@ -302,7 +302,7 @@ export default function BackgroundPanel() {
 
       {/* Blur */}
       <div className="flex items-center gap-2">
-        <label className="text-[11px] text-zinc-500 w-10">Blur</label>
+        <label className="text-[11px] text-zinc-500 w-12">Blur</label>
         <input
           type="range"
           min={0}
@@ -318,7 +318,7 @@ export default function BackgroundPanel() {
 
       {/* Grain */}
       <div className="flex items-center gap-2">
-        <label className="text-[11px] text-zinc-500 w-10">Grain</label>
+        <label className="text-[11px] text-zinc-500 w-12">Grain</label>
         <input
           type="range"
           min={0}
@@ -336,7 +336,7 @@ export default function BackgroundPanel() {
       <div className="border-t border-zinc-800/60 pt-3 mt-3">
         <p className="text-[11px] font-medium text-zinc-500 tracking-wide mb-2">Canvas Size</p>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-zinc-500 w-4">W</span>
+          <span className="text-[11px] text-zinc-500 w-6 shrink-0">W</span>
           <input
             type="number"
             min={100}
@@ -345,7 +345,7 @@ export default function BackgroundPanel() {
             onChange={(e) => handleDimensionChange(e.target.value, heightInput)}
             className="w-full px-2 py-1 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 border border-zinc-700/50 focus:outline-none focus:border-zinc-500"
           />
-          <span className="text-[11px] text-zinc-500 w-4">H</span>
+          <span className="text-[11px] text-zinc-500 w-6 shrink-0">H</span>
           <input
             type="number"
             min={100}
