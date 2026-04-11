@@ -514,7 +514,7 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
             <button
               key={label}
               onClick={() => setCropAspectRatio(value)}
-              className={`px-2 py-1 text-[12px] rounded-md transition-colors ${
+              className={`px-2 py-1 text-[12px] rounded-md transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 ${
                 cropAspectRatio === value
                   ? "bg-zinc-100 text-zinc-900"
                   : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
@@ -526,17 +526,17 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           <div className="w-px h-5 bg-zinc-700/60" />
           <button
             onClick={handleCropCancel}
-            className="px-3 py-1 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
+            className="px-3 py-1 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
           >
             Discard Crop
           </button>
           <button
             onClick={handleCropConfirm}
-            className="px-3 py-1 text-[13px] rounded-md bg-zinc-100 text-zinc-900 hover:bg-zinc-200 transition-colors"
+            className="px-3 py-1 text-[13px] rounded-md bg-zinc-100 text-zinc-900 hover:bg-zinc-200 active:bg-zinc-300 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
           >
             Crop Image
           </button>
-          <span className="text-[11px] text-zinc-500 ml-1">Enter to confirm · Escape to cancel</span>
+          <span className="text-[11px] text-zinc-500 ml-2">Enter to confirm · Escape to cancel</span>
         </div>
       )}
 
@@ -581,37 +581,37 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
       />
 
       {/* Zoom and undo controls */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-1.5 py-1 backdrop-blur-sm">
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-2 py-1 backdrop-blur-sm">
         <button
           onClick={undo}
-          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+          className="px-2 py-1 text-[12px] text-zinc-400 hover:text-zinc-100 active:text-white rounded transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
           title="Undo (Cmd+Z)"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6.69 3L3 13"/></svg>
         </button>
         <button
           onClick={redo}
-          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+          className="px-2 py-1 text-[12px] text-zinc-400 hover:text-zinc-100 active:text-white rounded transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
           title="Redo (Cmd+Shift+Z)"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6.69 3L21 13"/></svg>
         </button>
-        <div className="w-px h-4 bg-zinc-800/60 mx-0.5" />
+        <div className="w-px h-4 bg-zinc-800/60 mx-1" />
         <button
           onClick={() => setZoom((z) => Math.max(z * 0.8, 0.25))}
-          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+          className="px-2 py-1 text-[12px] text-zinc-400 hover:text-zinc-100 active:text-white rounded transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
         >
           -
         </button>
         <button
           onClick={() => setZoom(1)}
-          className="px-2 py-0.5 text-[11px] text-zinc-400 hover:text-zinc-100 rounded hover:bg-zinc-800/60 transition-colors min-w-[3rem] text-center"
+          className="px-2 py-1 text-[11px] text-zinc-400 hover:text-zinc-100 rounded hover:bg-zinc-800/60 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 min-w-[3rem] text-center"
         >
           {Math.round(zoom * 100)}%
         </button>
         <button
           onClick={() => setZoom((z) => Math.min(z * 1.2, 4))}
-          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+          className="px-2 py-1 text-[12px] text-zinc-400 hover:text-zinc-100 active:text-white rounded transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
         >
           +
         </button>
