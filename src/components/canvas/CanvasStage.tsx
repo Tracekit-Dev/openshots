@@ -529,7 +529,7 @@ export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStage
   return (
     <div
       ref={containerRef}
-      className="flex-1 flex items-center justify-center overflow-hidden bg-zinc-900/50 relative"
+      className="w-full h-full flex items-center justify-center overflow-hidden bg-zinc-900/50 relative"
     >
       <div
         style={{
