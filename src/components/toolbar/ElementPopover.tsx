@@ -1,10 +1,27 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import Konva from "konva";
+import { ChevronDown, ChevronRight, GripHorizontal } from "lucide-react";
 import { useCanvasStore } from "../../stores/canvas.store";
 import { useToolStore, COLOR_PRESETS } from "../../stores/tool.store";
 import { useSelectionBounds } from "../../hooks/useSelectionBounds";
 import { extractDominantColor } from "../../lib/colorAnalysis";
 import { computeFanLayout } from "../../lib/fanLayout";
+
+function Section({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 w-full text-left text-[11px] font-medium text-zinc-400 tracking-wide hover:text-zinc-200 transition-colors"
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        {title}
+      </button>
+      {open && <div className="mt-2 space-y-3">{children}</div>}
+    </div>
+  );
+}
 
 interface ElementPopoverProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -29,7 +46,37 @@ export default function ElementPopover({ stageRef }: ElementPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [popoverSize, setPopoverSize] = useState({ width: 0, height: 0 });
-  // flipped state removed — use isBelow directly
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const isDraggingRef = useRef(false);
+
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    isDraggingRef.current = true;
+    const el = popoverRef.current;
+    if (!el) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const offsetX = dragOffset?.x ?? 0;
+    const offsetY = dragOffset?.y ?? 0;
+
+    const onMove = (ev: MouseEvent) => {
+      setDragOffset({
+        x: offsetX + (ev.clientX - startX),
+        y: offsetY + (ev.clientY - startY),
+      });
+    };
+    const onUp = () => {
+      isDraggingRef.current = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [dragOffset]);
+
+  // Reset drag offset when selection changes
+  useEffect(() => {
+    setDragOffset(null);
+  }, [selectedId]);
 
   const selected = images.find((img) => img.id === selectedId);
   const selectedAnnotation = annotations.find((a) => a.id === selectedId);
@@ -141,14 +188,22 @@ export default function ElementPopover({ stageRef }: ElementPopoverProps) {
         visible ? "opacity-100 scale-100" : "opacity-0 scale-95"
       }`}
       style={{
-        top,
-        left,
+        top: top + (dragOffset?.y ?? 0),
+        left: left + (dragOffset?.x ?? 0),
         transformOrigin: isBelow ? "top center" : "bottom center",
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {/* Caret arrow */}
+      {/* Drag handle header */}
       <div
+        onMouseDown={handleDragStart}
+        className="flex items-center justify-center cursor-grab active:cursor-grabbing py-0.5 -mt-1 mb-1"
+      >
+        <GripHorizontal size={14} className="text-zinc-600" />
+      </div>
+
+      {/* Caret arrow (hidden when dragged) */}
+      {!dragOffset && <div
         className="absolute w-0 h-0"
         style={{
           left: caretLeft - 6,
@@ -166,32 +221,44 @@ export default function ElementPopover({ stageRef }: ElementPopoverProps) {
                 borderTop: "6px solid rgb(63 63 70 / 0.6)",
               }),
         }}
-      />
+      />}
 
       {/* Image controls */}
-      {selected && <ImageControls
-        selected={selected}
-        updateImage={updateImage}
-        padding={padding}
-        setPadding={setPadding}
-        images={images}
-        onFanLayout={handleFanLayout}
-        onAutoInsetBorder={handleAutoInsetBorder}
-      />}
+      {selected && (
+        <Section title="Image Properties" defaultOpen>
+          <ImageControls
+            selected={selected}
+            updateImage={updateImage}
+            padding={padding}
+            setPadding={setPadding}
+            images={images}
+            onFanLayout={handleFanLayout}
+            onAutoInsetBorder={handleAutoInsetBorder}
+          />
+        </Section>
+      )}
 
       {/* Annotation controls */}
-      {selectedAnnotation && <AnnotationControls
-        annotation={selectedAnnotation}
-        updateAnnotation={updateAnnotation}
-        setStrokeColor={setStrokeColor}
-        setStrokeWidth={setStrokeWidth}
-      />}
+      {selectedAnnotation && (
+        <Section title="Shape Properties" defaultOpen>
+          <AnnotationControls
+            annotation={selectedAnnotation}
+            updateAnnotation={updateAnnotation}
+            setStrokeColor={setStrokeColor}
+            setStrokeWidth={setStrokeWidth}
+          />
+        </Section>
+      )}
 
       {/* Privacy region controls */}
-      {selectedPrivacy && <PrivacyControls
-        region={selectedPrivacy}
-        updatePrivacyRegion={updatePrivacyRegion}
-      />}
+      {selectedPrivacy && (
+        <Section title="Blur / Pixelate" defaultOpen>
+          <PrivacyControls
+            region={selectedPrivacy}
+            updatePrivacyRegion={updatePrivacyRegion}
+          />
+        </Section>
+      )}
     </div>
   );
 }
