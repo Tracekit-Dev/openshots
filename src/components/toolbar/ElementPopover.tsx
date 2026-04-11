@@ -29,7 +29,7 @@ export default function ElementPopover({ stageRef }: ElementPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [popoverSize, setPopoverSize] = useState({ width: 0, height: 0 });
-  const [flipped, setFlipped] = useState(false);
+  // flipped state removed — use isBelow directly
 
   const selected = images.find((img) => img.id === selectedId);
   const selectedAnnotation = annotations.find((a) => a.id === selectedId);
@@ -45,9 +45,13 @@ export default function ElementPopover({ stageRef }: ElementPopoverProps) {
   useLayoutEffect(() => {
     const el = popoverRef.current;
     if (el) {
-      setPopoverSize({ width: el.offsetWidth, height: el.offsetHeight });
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      setPopoverSize((prev) =>
+        prev.width === w && prev.height === h ? prev : { width: w, height: h }
+      );
     }
-  });
+  }, [bounds, selected, selectedAnnotation, selectedPrivacy]);
 
   // Dismiss on outside click
   useEffect(() => {
@@ -95,10 +99,7 @@ export default function ElementPopover({ stageRef }: ElementPopoverProps) {
   let left = bounds.x + bounds.width / 2 - pw / 2;
   left = Math.max(EDGE_PAD, Math.min(left, window.innerWidth - pw - EDGE_PAD));
 
-  // Track flipped state for caret direction
-  if (isBelow !== flipped) {
-    setFlipped(isBelow);
-  }
+  // Use isBelow directly instead of tracking in state
 
   // Caret horizontal position relative to popover
   const caretLeft = Math.max(
