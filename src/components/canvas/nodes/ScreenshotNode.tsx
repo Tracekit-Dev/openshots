@@ -81,10 +81,11 @@ export default function ScreenshotNode({
 
   if (!img) return null;
 
-  const frameType = data.frame?.type;
+  const frameCategory = data.frame?.type;
+  const frameVariant = data.frame?.variant;
   const frameTheme = data.frame?.theme ?? "dark";
-  const hasChrome = frameType === "macos" || frameType === "windows";
-  const hasDevice = frameType === "iphone" || frameType === "ipad" || frameType === "macbook";
+  const hasChrome = frameCategory === "window-chrome";
+  const hasDevice = frameCategory === "device-mockup";
 
   const bw = data.insetBorder.enabled ? data.insetBorder.width : 0;
 
@@ -254,7 +255,7 @@ export default function ScreenshotNode({
           y={data.y - totalH / 2}
           width={totalW}
           height={totalH}
-          cornerRadius={hasChrome ? WINDOW_CHROME_FRAMES[frameType as "macos" | "windows"].borderRadius : hasDevice ? DEVICE_MOCKUP_FRAMES[frameType as "iphone" | "ipad" | "macbook"].bezelRadius : effectiveCornerRadius}
+          cornerRadius={hasChrome ? WINDOW_CHROME_FRAMES[frameVariant as "macos" | "windows"].borderRadius : hasDevice ? DEVICE_MOCKUP_FRAMES[frameVariant as "iphone" | "ipad" | "macbook"].bezelRadius : effectiveCornerRadius}
           fill="#000"
           opacity={0}
           shadowEnabled
@@ -288,7 +289,7 @@ export default function ScreenshotNode({
         {hasChrome && (
           <>
             <WindowChrome
-              config={WINDOW_CHROME_FRAMES[frameType as "macos" | "windows"]}
+              config={WINDOW_CHROME_FRAMES[frameVariant as "macos" | "windows"]}
               theme={frameTheme}
               width={displayWidth}
               height={displayHeight}
@@ -300,7 +301,7 @@ export default function ScreenshotNode({
         {/* Device Mockup Frame (iPhone / iPad / MacBook) */}
         {hasDevice && deviceInsets && (
           <DeviceMockup
-            config={DEVICE_MOCKUP_FRAMES[frameType as "iphone" | "ipad" | "macbook"]}
+            config={DEVICE_MOCKUP_FRAMES[frameVariant as "iphone" | "ipad" | "macbook"]}
             width={displayWidth}
             height={displayHeight}
           >

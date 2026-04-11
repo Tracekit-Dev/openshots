@@ -157,11 +157,10 @@ export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStage
     setCropAspectRatio(null);
   }, [setActiveTool]);
 
-  // Base scale fits canvas to container, zoom multiplies it
+  // Base scale fits canvas to container (contain mode), zoom multiplies it
   const baseScale = Math.min(
     containerSize.width / canvasWidth,
     containerSize.height / canvasHeight,
-    1,
   );
   const scale = baseScale * zoom;
 
@@ -352,7 +351,6 @@ export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStage
         if (e.target === e.target.getStage()) {
           setSelectedId(null);
           if (onBackgroundClick) {
-            const rect = (e.target as unknown as HTMLElement).getBoundingClientRect?.();
             const evt = e.evt as MouseEvent;
             onBackgroundClick({ x: evt.clientX, y: evt.clientY });
           }

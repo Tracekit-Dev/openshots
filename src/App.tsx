@@ -325,7 +325,7 @@ export default function App() {
       {hasImages && <EditorToolbar stageRef={stageRef} />}
 
       {/* Canvas area -- full width, no sidebars */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         {hasImages ? (
           <CanvasStage
             stageRef={stageRef}
@@ -339,10 +339,10 @@ export default function App() {
             onUpload={() => void handleUpload()}
           />
         )}
-      </div>
 
-      {/* Drag bar */}
-      {hasImages && <DragBar stageRef={stageRef} />}
+        {/* Drag bar -- absolutely positioned at bottom of canvas area */}
+        {hasImages && <DragBar stageRef={stageRef} />}
+      </div>
 
       {/* Background popover */}
       {bgPopover && (

@@ -31,16 +31,17 @@ export default function ScreenshotLayer() {
           const displayH = Math.round(img.height * fitScale);
 
           // Calculate extra height from window chrome frames
-          const frameType = img.frame?.type;
+          const frameVariant = img.frame?.variant;
+          const frameCategory = img.frame?.type;
           let chromeHeight = 0;
-          if (frameType === "macos" || frameType === "windows") {
-            chromeHeight = WINDOW_CHROME_FRAMES[frameType].titleBarHeight;
+          if (frameCategory === "window-chrome" && (frameVariant === "macos" || frameVariant === "windows")) {
+            chromeHeight = WINDOW_CHROME_FRAMES[frameVariant].titleBarHeight;
           }
 
           // Calculate device mockup insets
           let deviceInsets: { top: number; right: number; bottom: number; left: number } | null = null;
-          if (frameType === "iphone" || frameType === "ipad" || frameType === "macbook") {
-            const mockupConfig = DEVICE_MOCKUP_FRAMES[frameType];
+          if (frameCategory === "device-mockup" && (frameVariant === "iphone" || frameVariant === "ipad" || frameVariant === "macbook")) {
+            const mockupConfig = DEVICE_MOCKUP_FRAMES[frameVariant];
             const totalW = displayW / (1 - mockupConfig.screenInset.left - mockupConfig.screenInset.right);
             const totalH = displayH / (1 - mockupConfig.screenInset.top - mockupConfig.screenInset.bottom);
             deviceInsets = {
