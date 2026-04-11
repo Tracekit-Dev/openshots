@@ -39,6 +39,7 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
 
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
+  const padding = useCanvasStore((s) => s.padding);
   const images = useCanvasStore((s) => s.images);
   const selectedId = useCanvasStore((s) => s.selectedId);
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
@@ -63,12 +64,18 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   const selectedImage = images.find((img) => img.id === selectedId);
   const isCropActive = activeTool === "crop" && selectedImage != null;
 
+  // Compute display dimensions for selected image (same as ScreenshotLayer)
+  const availW = Math.max(canvasWidth - padding * 2, 100);
+  const availH = Math.max(canvasHeight - padding * 2, 100);
+  const selectedDisplayW = selectedImage ? Math.round(selectedImage.width * Math.min(availW / selectedImage.width, availH / selectedImage.height)) : 0;
+  const selectedDisplayH = selectedImage ? Math.round(selectedImage.height * Math.min(availW / selectedImage.width, availH / selectedImage.height)) : 0;
+
   // Initialize crop rect when entering crop mode
   useEffect(() => {
     if (isCropActive && selectedImage && !cropRect) {
       const bw = selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width : 0;
-      const totalW = selectedImage.width + bw * 2;
-      const totalH = selectedImage.height + bw * 2;
+      const totalW = selectedDisplayW + bw * 2;
+      const totalH = selectedDisplayH + bw * 2;
       const imgLeft = selectedImage.x - totalW / 2;
       const imgTop = selectedImage.y - totalH / 2;
       setCropRect({ x: imgLeft, y: imgTop, width: totalW, height: totalH });
@@ -111,8 +118,8 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
     img.src = imageSrc;
     img.onload = () => {
       const bw = selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width : 0;
-      const totalW = selectedImage.width + bw * 2;
-      const totalH = selectedImage.height + bw * 2;
+      const totalW = selectedDisplayW + bw * 2;
+      const totalH = selectedDisplayH + bw * 2;
       const imgLeft = selectedImage.x - totalW / 2;
       const imgTop = selectedImage.y - totalH / 2;
       const scaleX = img.naturalWidth / totalW;
@@ -513,14 +520,19 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           <ScreenshotLayer />
           {!isCropActive && <PrivacyLayer />}
           {!isCropActive && <AnnotationLayer />}
-          {isCropActive && cropRect && (
+          {isCropActive && cropRect && selectedImage && (
             <CropOverlay
-              image={selectedImage!}
               canvasWidth={canvasWidth}
               canvasHeight={canvasHeight}
               cropRect={cropRect}
               setCropRect={setCropRect}
               aspectRatio={cropAspectRatio}
+              imageBounds={{
+                x: selectedImage.x - (selectedDisplayW + (selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width * 2 : 0)) / 2,
+                y: selectedImage.y - (selectedDisplayH + (selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width * 2 : 0)) / 2,
+                width: selectedDisplayW + (selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width * 2 : 0),
+                height: selectedDisplayH + (selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width * 2 : 0),
+              }}
             />
           )}
         </Stage>

@@ -1,7 +1,5 @@
-import { useRef } from "react";
-import { Layer, Rect } from "react-konva";
+import { Layer, Rect, Line } from "react-konva";
 import Konva from "konva";
-import type { CanvasImage } from "../../stores/canvas.store";
 
 export interface CropRect {
   x: number;
@@ -11,18 +9,24 @@ export interface CropRect {
 }
 
 interface CropOverlayProps {
-  image: CanvasImage;
   canvasWidth: number;
   canvasHeight: number;
   cropRect: CropRect;
   setCropRect: (rect: CropRect) => void;
   aspectRatio: number | null;
+  /** Bounds the crop box can't exceed (the visible image area) */
+  imageBounds: { x: number; y: number; width: number; height: number };
 }
 
-const HANDLE_SIZE = 12;
+const HANDLE_SIZE = 10;
 const MASK_FILL = "rgba(0,0,0,0.5)";
 const HANDLE_FILL = "#ffffff";
-const BORDER_STROKE = "rgba(255,255,255,0.8)";
+const BORDER_STROKE = "rgba(255,255,255,0.9)";
+const GUIDE_STROKE = "rgba(255,255,255,0.25)";
+
+type DragTarget =
+  | { type: "box" }
+  | { type: "handle"; position: HandlePosition };
 
 type HandlePosition =
   | "top-left"
@@ -39,256 +43,253 @@ function constrainToRatio(
   h: number,
   ratio: number | null,
 ): { width: number; height: number } {
-  if (!ratio) return { width: w, height: h };
-  if (w / h > ratio) return { width: h * ratio, height: h };
-  return { width: w, height: w / ratio };
+  if (!ratio) return { width: Math.max(10, w), height: Math.max(10, h) };
+  const absW = Math.max(10, Math.abs(w));
+  const absH = Math.max(10, Math.abs(h));
+  if (absW / absH > ratio) return { width: absH * ratio, height: absH };
+  return { width: absW, height: absW / ratio };
 }
 
-function clampCropToImage(
-  crop: CropRect,
-  imgLeft: number,
-  imgTop: number,
-  imgW: number,
-  imgH: number,
-): CropRect {
-  const x = Math.max(imgLeft, Math.min(crop.x, imgLeft + imgW - 10));
-  const y = Math.max(imgTop, Math.min(crop.y, imgTop + imgH - 10));
-  const width = Math.max(10, Math.min(crop.width, imgLeft + imgW - x));
-  const height = Math.max(10, Math.min(crop.height, imgTop + imgH - y));
-  return { x, y, width, height };
+function clamp(val: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, val));
 }
 
 export default function CropOverlay({
-  image,
   canvasWidth,
   canvasHeight,
   cropRect,
   setCropRect,
   aspectRatio,
+  imageBounds,
 }: CropOverlayProps) {
-  const isDragging = useRef(false);
-
-  const bw = image.insetBorder.enabled ? image.insetBorder.width : 0;
-  const imgW = image.width + bw * 2;
-  const imgH = image.height + bw * 2;
-  const imgLeft = image.x - imgW / 2;
-  const imgTop = image.y - imgH / 2;
-
   const { x: cx, y: cy, width: cw, height: ch } = cropRect;
+  const { x: bx, y: by, width: bw, height: bh } = imageBounds;
 
-  // Handle positions
-  function getHandlePos(pos: HandlePosition): { hx: number; hy: number } {
+  // Rule of thirds guides
+  const thirdW = cw / 3;
+  const thirdH = ch / 3;
+
+  function getHandleRect(pos: HandlePosition) {
+    const hs = HANDLE_SIZE;
     switch (pos) {
-      case "top-left":
-        return { hx: cx, hy: cy };
-      case "top-center":
-        return { hx: cx + cw / 2, hy: cy };
-      case "top-right":
-        return { hx: cx + cw, hy: cy };
-      case "middle-left":
-        return { hx: cx, hy: cy + ch / 2 };
-      case "middle-right":
-        return { hx: cx + cw, hy: cy + ch / 2 };
-      case "bottom-left":
-        return { hx: cx, hy: cy + ch };
-      case "bottom-center":
-        return { hx: cx + cw / 2, hy: cy + ch };
-      case "bottom-right":
-        return { hx: cx + cw, hy: cy + ch };
+      case "top-left":     return { x: cx - hs / 2, y: cy - hs / 2 };
+      case "top-center":   return { x: cx + cw / 2 - hs / 2, y: cy - hs / 2 };
+      case "top-right":    return { x: cx + cw - hs / 2, y: cy - hs / 2 };
+      case "middle-left":  return { x: cx - hs / 2, y: cy + ch / 2 - hs / 2 };
+      case "middle-right": return { x: cx + cw - hs / 2, y: cy + ch / 2 - hs / 2 };
+      case "bottom-left":  return { x: cx - hs / 2, y: cy + ch - hs / 2 };
+      case "bottom-center":return { x: cx + cw / 2 - hs / 2, y: cy + ch - hs / 2 };
+      case "bottom-right": return { x: cx + cw - hs / 2, y: cy + ch - hs / 2 };
     }
   }
 
-  function handleHandleDrag(
-    pos: HandlePosition,
-    e: Konva.KonvaEventObject<DragEvent>,
-  ) {
-    const node = e.target;
-    const nx = node.x() + HANDLE_SIZE / 2;
-    const ny = node.y() + HANDLE_SIZE / 2;
+  function getCursor(pos: HandlePosition): string {
+    switch (pos) {
+      case "top-left":
+      case "bottom-right":
+        return "nwse-resize";
+      case "top-right":
+      case "bottom-left":
+        return "nesw-resize";
+      case "top-center":
+      case "bottom-center":
+        return "ns-resize";
+      case "middle-left":
+      case "middle-right":
+        return "ew-resize";
+    }
+  }
 
-    let newRect = { ...cropRect };
+  function handleDrag(
+    target: DragTarget,
+    startPointer: { x: number; y: number },
+    startRect: CropRect,
+    currentPointer: { x: number; y: number },
+  ) {
+    const dx = currentPointer.x - startPointer.x;
+    const dy = currentPointer.y - startPointer.y;
+
+    if (target.type === "box") {
+      const newX = clamp(startRect.x + dx, bx, bx + bw - startRect.width);
+      const newY = clamp(startRect.y + dy, by, by + bh - startRect.height);
+      setCropRect({ x: newX, y: newY, width: startRect.width, height: startRect.height });
+      return;
+    }
+
+    const pos = target.position;
+    let newRect = { ...startRect };
 
     switch (pos) {
       case "top-left": {
-        const w = cx + cw - nx;
-        const h = cy + ch - ny;
+        const w = startRect.width - dx;
+        const h = startRect.height - dy;
         const { width, height } = constrainToRatio(w, h, aspectRatio);
-        newRect = {
-          x: cx + cw - width,
-          y: cy + ch - height,
-          width,
-          height,
-        };
+        newRect = { x: startRect.x + startRect.width - width, y: startRect.y + startRect.height - height, width, height };
         break;
       }
       case "top-right": {
-        const w = nx - cx;
-        const h = cy + ch - ny;
+        const w = startRect.width + dx;
+        const h = startRect.height - dy;
         const { width, height } = constrainToRatio(w, h, aspectRatio);
-        newRect = { x: cx, y: cy + ch - height, width, height };
+        newRect = { x: startRect.x, y: startRect.y + startRect.height - height, width, height };
         break;
       }
       case "bottom-left": {
-        const w = cx + cw - nx;
-        const h = ny - cy;
+        const w = startRect.width - dx;
+        const h = startRect.height + dy;
         const { width, height } = constrainToRatio(w, h, aspectRatio);
-        newRect = { x: cx + cw - width, y: cy, width, height };
+        newRect = { x: startRect.x + startRect.width - width, y: startRect.y, width, height };
         break;
       }
       case "bottom-right": {
-        const w = nx - cx;
-        const h = ny - cy;
+        const w = startRect.width + dx;
+        const h = startRect.height + dy;
         const { width, height } = constrainToRatio(w, h, aspectRatio);
-        newRect = { x: cx, y: cy, width, height };
+        newRect = { x: startRect.x, y: startRect.y, width, height };
         break;
       }
       case "top-center": {
-        const h = cy + ch - ny;
+        const h = startRect.height - dy;
         if (aspectRatio) {
-          const width = h * aspectRatio;
-          newRect = {
-            x: cx + (cw - width) / 2,
-            y: cy + ch - h,
-            width,
-            height: h,
-          };
+          const { width, height } = constrainToRatio(startRect.width, h, aspectRatio);
+          newRect = { x: startRect.x + (startRect.width - width) / 2, y: startRect.y + startRect.height - height, width, height };
         } else {
-          newRect = { ...cropRect, y: ny, height: h };
+          newRect = { x: startRect.x, y: startRect.y + dy, width: startRect.width, height: Math.max(10, h) };
         }
         break;
       }
       case "bottom-center": {
-        const h = ny - cy;
+        const h = startRect.height + dy;
         if (aspectRatio) {
-          const width = h * aspectRatio;
-          newRect = { x: cx + (cw - width) / 2, y: cy, width, height: h };
+          const { width, height } = constrainToRatio(startRect.width, h, aspectRatio);
+          newRect = { x: startRect.x + (startRect.width - width) / 2, y: startRect.y, width, height };
         } else {
-          newRect = { ...cropRect, height: h };
+          newRect = { ...startRect, height: Math.max(10, h) };
         }
         break;
       }
       case "middle-left": {
-        const w = cx + cw - nx;
+        const w = startRect.width - dx;
         if (aspectRatio) {
-          const height = w / aspectRatio;
-          newRect = {
-            x: cx + cw - w,
-            y: cy + (ch - height) / 2,
-            width: w,
-            height,
-          };
+          const { width, height } = constrainToRatio(w, startRect.height, aspectRatio);
+          newRect = { x: startRect.x + startRect.width - width, y: startRect.y + (startRect.height - height) / 2, width, height };
         } else {
-          newRect = { ...cropRect, x: nx, width: w };
+          newRect = { x: startRect.x + dx, y: startRect.y, width: Math.max(10, w), height: startRect.height };
         }
         break;
       }
       case "middle-right": {
-        const w = nx - cx;
+        const w = startRect.width + dx;
         if (aspectRatio) {
-          const height = w / aspectRatio;
-          newRect = { x: cx, y: cy + (ch - height) / 2, width: w, height };
+          const { width, height } = constrainToRatio(w, startRect.height, aspectRatio);
+          newRect = { x: startRect.x, y: startRect.y + (startRect.height - height) / 2, width, height };
         } else {
-          newRect = { ...cropRect, width: w };
+          newRect = { ...startRect, width: Math.max(10, w) };
         }
         break;
       }
     }
 
-    // Ensure minimum size
-    if (newRect.width < 10) newRect.width = 10;
-    if (newRect.height < 10) newRect.height = 10;
+    // Clamp to image bounds
+    newRect.x = clamp(newRect.x, bx, bx + bw - 10);
+    newRect.y = clamp(newRect.y, by, by + bh - 10);
+    newRect.width = Math.min(newRect.width, bx + bw - newRect.x);
+    newRect.height = Math.min(newRect.height, by + bh - newRect.y);
 
-    const clamped = clampCropToImage(newRect, imgLeft, imgTop, imgW, imgH);
-    setCropRect(clamped);
+    setCropRect(newRect);
   }
 
-  // Crop box drag (reposition)
-  function handleCropBoxDragMove(e: Konva.KonvaEventObject<DragEvent>) {
-    isDragging.current = true;
-    const node = e.target;
-    let nx = node.x();
-    let ny = node.y();
-    // Clamp within image bounds
-    nx = Math.max(imgLeft, Math.min(nx, imgLeft + imgW - cw));
-    ny = Math.max(imgTop, Math.min(ny, imgTop + imgH - ch));
-    node.x(nx);
-    node.y(ny);
-    setCropRect({ x: nx, y: ny, width: cw, height: ch });
-  }
+  // Use Stage-level mouse events for smooth dragging
+  function startDrag(target: DragTarget, e: Konva.KonvaEventObject<MouseEvent>) {
+    e.cancelBubble = true;
+    const stage = e.target.getStage();
+    if (!stage) return;
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
 
-  function handleCropBoxDragEnd() {
-    isDragging.current = false;
+    // Account for stage scale
+    const scale = stage.scaleX();
+    const startPointer = { x: pointer.x / scale, y: pointer.y / scale };
+    const startRect = { ...cropRect };
+
+    const container = stage.container();
+    if (target.type === "box") {
+      container.style.cursor = "move";
+    }
+
+    const onMove = () => {
+      const pos = stage.getPointerPosition();
+      if (!pos) return;
+      handleDrag(target, startPointer, startRect, { x: pos.x / scale, y: pos.y / scale });
+    };
+
+    const onUp = () => {
+      container.style.cursor = "default";
+      stage.off("mousemove touchmove", onMove);
+      stage.off("mouseup touchend", onUp);
+    };
+
+    stage.on("mousemove touchmove", onMove);
+    stage.on("mouseup touchend", onUp);
   }
 
   const handles: HandlePosition[] = [
-    "top-left",
-    "top-center",
-    "top-right",
-    "middle-left",
-    "middle-right",
-    "bottom-left",
-    "bottom-center",
-    "bottom-right",
+    "top-left", "top-center", "top-right",
+    "middle-left", "middle-right",
+    "bottom-left", "bottom-center", "bottom-right",
   ];
 
   return (
     <Layer>
       {/* Mask: 4 dark rects around the crop box */}
-      {/* Top */}
       <Rect x={0} y={0} width={canvasWidth} height={cy} fill={MASK_FILL} listening={false} />
-      {/* Bottom */}
-      <Rect
-        x={0}
-        y={cy + ch}
-        width={canvasWidth}
-        height={canvasHeight - (cy + ch)}
-        fill={MASK_FILL}
-        listening={false}
-      />
-      {/* Left */}
+      <Rect x={0} y={cy + ch} width={canvasWidth} height={canvasHeight - (cy + ch)} fill={MASK_FILL} listening={false} />
       <Rect x={0} y={cy} width={cx} height={ch} fill={MASK_FILL} listening={false} />
-      {/* Right */}
-      <Rect
-        x={cx + cw}
-        y={cy}
-        width={canvasWidth - (cx + cw)}
-        height={ch}
-        fill={MASK_FILL}
-        listening={false}
-      />
+      <Rect x={cx + cw} y={cy} width={canvasWidth - (cx + cw)} height={ch} fill={MASK_FILL} listening={false} />
 
-      {/* Crop box border */}
+      {/* Rule of thirds guides */}
+      <Line points={[cx + thirdW, cy, cx + thirdW, cy + ch]} stroke={GUIDE_STROKE} strokeWidth={0.5} listening={false} />
+      <Line points={[cx + thirdW * 2, cy, cx + thirdW * 2, cy + ch]} stroke={GUIDE_STROKE} strokeWidth={0.5} listening={false} />
+      <Line points={[cx, cy + thirdH, cx + cw, cy + thirdH]} stroke={GUIDE_STROKE} strokeWidth={0.5} listening={false} />
+      <Line points={[cx, cy + thirdH * 2, cx + cw, cy + thirdH * 2]} stroke={GUIDE_STROKE} strokeWidth={0.5} listening={false} />
+
+      {/* Crop box — draggable area */}
       <Rect
         x={cx}
         y={cy}
         width={cw}
         height={ch}
         stroke={BORDER_STROKE}
-        strokeWidth={1}
-        draggable
-        onDragMove={handleCropBoxDragMove}
-        onDragEnd={handleCropBoxDragEnd}
+        strokeWidth={1.5}
+        fill="transparent"
+        onMouseDown={(e) => startDrag({ type: "box" }, e)}
+        onTouchStart={(e) => startDrag({ type: "box" }, e as unknown as Konva.KonvaEventObject<MouseEvent>)}
       />
 
-      {/* 8 handles */}
+      {/* 8 resize handles */}
       {handles.map((pos) => {
-        const { hx, hy } = getHandlePos(pos);
+        const { x, y } = getHandleRect(pos);
         return (
           <Rect
             key={pos}
-            x={hx - HANDLE_SIZE / 2}
-            y={hy - HANDLE_SIZE / 2}
+            x={x}
+            y={y}
             width={HANDLE_SIZE}
             height={HANDLE_SIZE}
             fill={HANDLE_FILL}
-            draggable
-            onDragMove={(e) => handleHandleDrag(pos, e)}
-            onDragEnd={(e) => {
-              // Reset handle position — we control via cropRect state
-              const { hx: resetX, hy: resetY } = getHandlePos(pos);
-              e.target.x(resetX - HANDLE_SIZE / 2);
-              e.target.y(resetY - HANDLE_SIZE / 2);
+            cornerRadius={2}
+            stroke="rgba(0,0,0,0.3)"
+            strokeWidth={0.5}
+            onMouseEnter={(e) => {
+              const stage = e.target.getStage();
+              if (stage) stage.container().style.cursor = getCursor(pos);
             }}
+            onMouseLeave={(e) => {
+              const stage = e.target.getStage();
+              if (stage) stage.container().style.cursor = "default";
+            }}
+            onMouseDown={(e) => startDrag({ type: "handle", position: pos }, e)}
+            onTouchStart={(e) => startDrag({ type: "handle", position: pos }, e as unknown as Konva.KonvaEventObject<MouseEvent>)}
           />
         );
       })}
