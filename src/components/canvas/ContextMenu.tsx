@@ -66,7 +66,8 @@ export default function ContextMenu({ x, y, elementId, onClose, onRemoveBackgrou
       }
       if (e.key === "Enter") {
         e.preventDefault();
-        executeAction(allItems[focusedIndex].action);
+        const item = allItems[focusedIndex];
+        if (item) executeAction(item.action);
         return;
       }
     };
