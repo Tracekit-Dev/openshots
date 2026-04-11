@@ -14,12 +14,7 @@ import WindowPicker from "./components/capture/WindowPicker";
 import WaylandBanner from "./components/shell/WaylandBanner";
 import SettingsPage from "./components/shell/SettingsPage";
 import CanvasStage, { addScreenshotToCanvas } from "./components/canvas/CanvasStage";
-import BackgroundPanel from "./components/panels/BackgroundPanel";
-import StylePanel from "./components/panels/StylePanel";
-import ToolPanel from "./components/panels/ToolPanel";
-import AspectRatioPanel from "./components/panels/AspectRatioPanel";
-import ExportPanel from "./components/panels/ExportPanel";
-import PresetPanel from "./components/panels/PresetPanel";
+import EditorToolbar from "./components/toolbar/EditorToolbar";
 import ShortcutsModal from "./components/shell/ShortcutsModal";
 import { useHotkeys } from "./hooks/useHotkeys";
 
@@ -325,15 +320,11 @@ export default function App() {
         </button>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left sidebar */}
-        <aside className="w-48 border-r border-zinc-800/60 overflow-y-auto px-3 py-4 space-y-6 shrink-0">
-          <ToolPanel />
-          <AspectRatioPanel />
-        </aside>
+      {/* Editor toolbar -- only visible when images exist */}
+      {hasImages && <EditorToolbar stageRef={stageRef} />}
 
-        {/* Canvas area */}
+      {/* Canvas area -- full width, no sidebars */}
+      <div className="flex-1 overflow-hidden">
         {hasImages ? (
           <CanvasStage stageRef={stageRef} />
         ) : (
@@ -344,14 +335,6 @@ export default function App() {
             onUpload={() => void handleUpload()}
           />
         )}
-
-        {/* Right sidebar */}
-        <aside className="w-60 border-l border-zinc-800/60 overflow-y-auto px-3 py-4 space-y-6 shrink-0">
-          <BackgroundPanel />
-          <StylePanel />
-          <PresetPanel />
-          <ExportPanel stageRef={stageRef} />
-        </aside>
       </div>
 
       {/* Window picker modal */}
