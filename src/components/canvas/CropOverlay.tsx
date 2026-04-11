@@ -19,7 +19,7 @@ interface CropOverlayProps {
   aspectRatio: number | null;
 }
 
-const HANDLE_SIZE = 8;
+const HANDLE_SIZE = 12;
 const MASK_FILL = "rgba(0,0,0,0.5)";
 const HANDLE_FILL = "#ffffff";
 const BORDER_STROKE = "rgba(255,255,255,0.8)";

@@ -3,6 +3,7 @@ import { Group, Image as KonvaImage, Rect, Transformer } from "react-konva";
 import Konva from "konva";
 import type { CanvasImage } from "../../../stores/canvas.store";
 import { useCanvasStore } from "../../../stores/canvas.store";
+import { useToolStore } from "../../../stores/tool.store";
 import type { Guide } from "../GuidesLayer";
 
 const SNAP_THRESHOLD = 8; // per D-10
@@ -47,6 +48,8 @@ export default function ScreenshotNode({
 }: ScreenshotNodeProps) {
   const updateImage = useCanvasStore((s) => s.updateImage);
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
+  const activeTool = useToolStore((s) => s.activeTool);
+  const isCropActive = activeTool === "crop";
   const groupRef = useRef<Konva.Group>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
@@ -185,9 +188,10 @@ export default function ScreenshotNode({
         rotation={data.rotation}
         offsetX={totalW / 2}
         offsetY={totalH / 2}
-        draggable
-        onClick={() => setSelectedId(data.id)}
-        onTap={() => setSelectedId(data.id)}
+        draggable={!isCropActive}
+        listening={!isCropActive}
+        onClick={() => !isCropActive && setSelectedId(data.id)}
+        onTap={() => !isCropActive && setSelectedId(data.id)}
         onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
@@ -244,7 +248,7 @@ export default function ScreenshotNode({
         </Group>
       </Group>
 
-      {isSelected && (
+      {isSelected && !isCropActive && (
         <Transformer
           ref={trRef}
           rotateEnabled

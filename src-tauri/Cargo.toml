@@ -2,6 +2,7 @@
 name = "openshots"
 version = "1.0.2"
 edition = "2021"
+default-run = "openshots"
 
 [lib]
 name = "openshots_lib"
@@ -27,5 +28,5 @@ clap = { version = "4", features = ["derive"] }
 glob = "0.3"
 
 [[bin]]
-name = "openshots"
+name = "openshots-cli"
 path = "src/bin/cli.rs"

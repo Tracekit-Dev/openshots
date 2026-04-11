@@ -80,11 +80,35 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   }, [isCropActive, selectedImage, cropRect]);
 
   // Crop confirm: offscreen canvas crop to data URL
-  const handleCropConfirm = useCallback(() => {
+  const handleCropConfirm = useCallback(async () => {
     if (!cropRect || !selectedImage) return;
+
+    // Load image — handle asset:// URLs by converting to data URL first
+    let imageSrc = selectedImage.src;
+    if (
+      imageSrc.startsWith("asset://") ||
+      imageSrc.startsWith("https://asset.localhost") ||
+      imageSrc.startsWith("http://asset.localhost")
+    ) {
+      // Convert asset URL to data URL via canvas
+      const tmpImg = new window.Image();
+      tmpImg.crossOrigin = "anonymous";
+      tmpImg.src = imageSrc;
+      imageSrc = await new Promise<string>((resolve, reject) => {
+        tmpImg.onload = () => {
+          const c = document.createElement("canvas");
+          c.width = tmpImg.naturalWidth;
+          c.height = tmpImg.naturalHeight;
+          const ctx = c.getContext("2d")!;
+          ctx.drawImage(tmpImg, 0, 0);
+          resolve(c.toDataURL("image/png"));
+        };
+        tmpImg.onerror = () => reject(new Error("Failed to load image for crop"));
+      });
+    }
+
     const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.src = selectedImage.src;
+    img.src = imageSrc;
     img.onload = () => {
       const bw = selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width : 0;
       const totalW = selectedImage.width + bw * 2;
@@ -487,8 +511,8 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
         >
           <BackgroundLayer />
           <ScreenshotLayer />
-          <PrivacyLayer />
-          <AnnotationLayer />
+          {!isCropActive && <PrivacyLayer />}
+          {!isCropActive && <AnnotationLayer />}
           {isCropActive && cropRect && (
             <CropOverlay
               image={selectedImage!}
@@ -513,7 +537,27 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           ].map(({ label, value }) => (
             <button
               key={label}
-              onClick={() => setCropAspectRatio(value)}
+              onClick={() => {
+                setCropAspectRatio(value);
+                // Immediately reshape crop box to match ratio
+                if (value && cropRect) {
+                  const centerX = cropRect.x + cropRect.width / 2;
+                  const centerY = cropRect.y + cropRect.height / 2;
+                  let newW = cropRect.width;
+                  let newH = cropRect.height;
+                  if (newW / newH > value) {
+                    newW = newH * value;
+                  } else {
+                    newH = newW / value;
+                  }
+                  setCropRect({
+                    x: centerX - newW / 2,
+                    y: centerY - newH / 2,
+                    width: newW,
+                    height: newH,
+                  });
+                }
+              }}
               className={`px-2 py-1 text-[12px] rounded-md transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 ${
                 cropAspectRatio === value
                   ? "bg-zinc-100 text-zinc-900"
@@ -528,15 +572,15 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
             onClick={handleCropCancel}
             className="px-3 py-1 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
           >
-            Discard Crop
+            Discard
           </button>
           <button
             onClick={handleCropConfirm}
             className="px-3 py-1 text-[13px] rounded-md bg-zinc-100 text-zinc-900 hover:bg-zinc-200 active:bg-zinc-300 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
           >
-            Crop Image
+            Crop
           </button>
-          <span className="text-[11px] text-zinc-500 ml-2">Enter to confirm · Escape to cancel</span>
+          <span className="text-[11px] text-zinc-500 ml-2">Enter · Esc</span>
         </div>
       )}
 
