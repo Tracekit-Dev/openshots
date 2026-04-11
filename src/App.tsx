@@ -105,6 +105,8 @@ export default function App() {
   const images = useCanvasStore((s) => s.images);
   const selfTimerDelay = useAppStore((s) => s.selfTimerDelay);
   const setSelfTimerDelay = useAppStore((s) => s.setSelfTimerDelay);
+  const retinaDownscale = useAppStore((s) => s.retinaDownscale);
+  const setRetinaDownscale = useAppStore((s) => s.setRetinaDownscale);
   const [view, setView] = useState<View>("main");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [bgPopover, setBgPopover] = useState<{ x: number; y: number } | null>(null);
@@ -340,6 +342,21 @@ export default function App() {
             </button>
           ))}
         </div>
+
+        {/* Retina downscale toggle */}
+        {window.devicePixelRatio > 1 && (
+          <button
+            onClick={() => setRetinaDownscale(!retinaDownscale)}
+            className={`px-2 py-1 text-[11px] rounded-md transition-colors ${
+              retinaDownscale
+                ? "bg-zinc-100 text-zinc-900"
+                : "text-zinc-500 hover:text-zinc-300"
+            }`}
+            title="Scale down Retina screenshots to 1x"
+          >
+            @1x
+          </button>
+        )}
 
         <div className="flex-1" />
 

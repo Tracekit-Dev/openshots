@@ -425,6 +425,59 @@ function ImageControls({
         </button>
       </div>
 
+      {/* Frame / Mockup */}
+      <div>
+        <label className="text-[11px] text-zinc-500 mb-1 block">Frame</label>
+        <div className="flex flex-wrap gap-1">
+          {[
+            { label: "None", type: undefined, variant: undefined },
+            { label: "macOS", type: "window-chrome" as const, variant: "macos" },
+            { label: "Windows", type: "window-chrome" as const, variant: "windows" },
+            { label: "iPhone", type: "device-mockup" as const, variant: "iphone" },
+            { label: "iPad", type: "device-mockup" as const, variant: "ipad" },
+            { label: "MacBook", type: "device-mockup" as const, variant: "macbook" },
+          ].map((opt) => {
+            const isActive = opt.type === undefined
+              ? !selected.frame
+              : selected.frame?.type === opt.type && selected.frame?.variant === opt.variant;
+            return (
+              <button
+                key={opt.label}
+                onClick={() =>
+                  updateImage(selected.id, {
+                    frame: opt.type ? { type: opt.type, variant: opt.variant!, theme: selected.frame?.theme ?? "dark" } : undefined,
+                  })
+                }
+                className={`px-2 py-1 text-[11px] rounded-md transition-colors duration-150 ${
+                  isActive
+                    ? "bg-zinc-100 text-zinc-900"
+                    : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {selected.frame && (
+          <div className="flex gap-1 mt-1">
+            {(["light", "dark"] as const).map((theme) => (
+              <button
+                key={theme}
+                onClick={() => updateImage(selected.id, { frame: { ...selected.frame!, theme } })}
+                className={`px-2 py-1 text-[11px] rounded-md transition-colors duration-150 ${
+                  (selected.frame?.theme ?? "dark") === theme
+                    ? "bg-zinc-100 text-zinc-900"
+                    : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
+                }`}
+              >
+                {theme.charAt(0).toUpperCase() + theme.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Fan layout */}
       {images.length > 1 && (
         <button
