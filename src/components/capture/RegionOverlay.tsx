@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAppStore } from "../../stores/app.store";
+import CrosshairOverlay from "./CrosshairOverlay";
 
 interface RegionOverlayProps {
   screenshotSrc: string;
@@ -196,14 +198,19 @@ export default function RegionOverlay({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onCancel]);
 
+  const crosshairEnabled = useAppStore((s) => s.crosshairEnabled);
+
   return (
-    <canvas
-      ref={canvasRef}
-      className="fixed inset-0 z-50 cursor-crosshair"
-      style={{ width: "100vw", height: "100vh" }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-    />
+    <>
+      {crosshairEnabled && !isDragging && <CrosshairOverlay />}
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 z-50 cursor-crosshair"
+        style={{ width: "100vw", height: "100vh" }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      />
+    </>
   );
 }

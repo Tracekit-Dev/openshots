@@ -18,7 +18,10 @@ export type CaptureState =
   | "selecting-region"
   | "selecting-window"
   | "capturing"
-  | "captured";
+  | "captured"
+  | "countdown";
+
+export type SelfTimerDelay = 0 | 3 | 5 | 10;
 
 interface AppState {
   isWayland: boolean;
@@ -36,11 +39,21 @@ interface AppState {
   regionScreenshotPath: string | null;
   setRegionScreenshotPath: (path: string | null) => void;
 
-  defaultSaveDir: string | null;
-  setDefaultSaveDir: (dir: string | null) => void;
+  selfTimerDelay: SelfTimerDelay;
+  setSelfTimerDelay: (delay: SelfTimerDelay) => void;
 
-  defaultSaveFormat: "png" | "jpeg" | "webp";
-  setDefaultSaveFormat: (format: "png" | "jpeg" | "webp") => void;
+  retinaDownscale: boolean;
+  setRetinaDownscale: (enabled: boolean) => void;
+
+  crosshairEnabled: boolean;
+  setCrosshairEnabled: (enabled: boolean) => void;
+
+  countdownRemaining: number;
+  setCountdownRemaining: (seconds: number) => void;
+
+  /** Which capture mode triggered the countdown */
+  countdownMode: "fullscreen" | "region" | "window" | null;
+  setCountdownMode: (mode: "fullscreen" | "region" | "window" | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -61,18 +74,28 @@ export const useAppStore = create<AppState>()(
       regionScreenshotPath: null,
       setRegionScreenshotPath: (path) => set({ regionScreenshotPath: path }),
 
-      defaultSaveDir: null,
-      setDefaultSaveDir: (dir) => set({ defaultSaveDir: dir }),
+      selfTimerDelay: 0,
+      setSelfTimerDelay: (delay) => set({ selfTimerDelay: delay }),
 
-      defaultSaveFormat: "png",
-      setDefaultSaveFormat: (format) => set({ defaultSaveFormat: format }),
+      retinaDownscale: false,
+      setRetinaDownscale: (enabled) => set({ retinaDownscale: enabled }),
+
+      crosshairEnabled: true,
+      setCrosshairEnabled: (enabled) => set({ crosshairEnabled: enabled }),
+
+      countdownRemaining: 0,
+      setCountdownRemaining: (seconds) => set({ countdownRemaining: seconds }),
+
+      countdownMode: null,
+      setCountdownMode: (mode) => set({ countdownMode: mode }),
     }),
     {
       name: "app-store",
       partialize: (state) => ({
         hotkeys: state.hotkeys,
-        defaultSaveDir: state.defaultSaveDir,
-        defaultSaveFormat: state.defaultSaveFormat,
+        selfTimerDelay: state.selfTimerDelay,
+        retinaDownscale: state.retinaDownscale,
+        crosshairEnabled: state.crosshairEnabled,
       }),
     },
   ),

@@ -4,6 +4,9 @@ import Konva from "konva";
 import type { CanvasImage } from "../../../stores/canvas.store";
 import { useCanvasStore } from "../../../stores/canvas.store";
 import { useToolStore } from "../../../stores/tool.store";
+import { WINDOW_CHROME_FRAMES, DEVICE_MOCKUP_FRAMES } from "../../composition/frames";
+import { WindowChrome } from "../../composition/WindowChrome";
+import { DeviceMockup } from "../../composition/DeviceMockup";
 import type { Guide } from "../GuidesLayer";
 
 const SNAP_THRESHOLD = 8; // per D-10
@@ -33,6 +36,8 @@ interface ScreenshotNodeProps {
   data: CanvasImage;
   displayWidth: number;
   displayHeight: number;
+  chromeHeight: number;
+  deviceInsets: { top: number; right: number; bottom: number; left: number } | null;
   isSelected: boolean;
   allImages: CanvasImage[];
   canvasWidth: number;
@@ -44,6 +49,8 @@ export default function ScreenshotNode({
   data,
   displayWidth,
   displayHeight,
+  chromeHeight,
+  deviceInsets,
   isSelected,
   allImages,
   canvasWidth,
@@ -74,11 +81,27 @@ export default function ScreenshotNode({
 
   if (!img) return null;
 
+  const frameType = data.frame?.type;
+  const frameTheme = data.frame?.theme ?? "dark";
+  const hasChrome = frameType === "macos" || frameType === "windows";
+  const hasDevice = frameType === "iphone" || frameType === "ipad" || frameType === "macbook";
+
   const bw = data.insetBorder.enabled ? data.insetBorder.width : 0;
-  // Use display dimensions for rendering (affected by padding contain-fit)
-  // but keep data.width/height for transform calculations
-  const totalW = displayWidth + bw * 2;
-  const totalH = displayHeight + bw * 2;
+
+  // Calculate total dimensions including frame
+  let totalW: number;
+  let totalH: number;
+
+  if (hasDevice && deviceInsets) {
+    totalW = displayWidth + deviceInsets.left + deviceInsets.right;
+    totalH = displayHeight + deviceInsets.top + deviceInsets.bottom;
+  } else if (hasChrome) {
+    totalW = displayWidth + bw * 2;
+    totalH = displayHeight + bw * 2 + chromeHeight;
+  } else {
+    totalW = displayWidth + bw * 2;
+    totalH = displayHeight + bw * 2;
+  }
 
   const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
@@ -162,17 +185,76 @@ export default function ScreenshotNode({
     });
   };
 
+  // Effective corner radius: disabled when device frame is active
+  const effectiveCornerRadius = hasDevice ? 0 : data.cornerRadius;
+
+  // Render the image content (shared between framed and unframed)
+  const renderImageContent = (offsetX: number, offsetY: number) => (
+    <>
+      {/* Inset border -- larger rounded rect behind the image */}
+      {data.insetBorder.enabled && !hasDevice && !hasChrome && (
+        <Rect
+          x={offsetX}
+          y={offsetY}
+          width={displayWidth + bw * 2}
+          height={displayHeight + bw * 2}
+          cornerRadius={effectiveCornerRadius + bw}
+          fill={data.insetBorder.color}
+          listening={false}
+        />
+      )}
+
+      {/* Clipped image */}
+      <Group
+        x={offsetX + (hasDevice || hasChrome ? 0 : bw)}
+        y={offsetY + (hasDevice || hasChrome ? 0 : bw)}
+        clipFunc={
+          effectiveCornerRadius > 0
+            ? (ctx) => {
+                const r = effectiveCornerRadius;
+                const w = displayWidth;
+                const h = displayHeight;
+                ctx.beginPath();
+                ctx.moveTo(r, 0);
+                ctx.lineTo(w - r, 0);
+                ctx.arcTo(w, 0, w, r, r);
+                ctx.lineTo(w, h - r);
+                ctx.arcTo(w, h, w - r, h, r);
+                ctx.lineTo(r, h);
+                ctx.arcTo(0, h, 0, h - r, r);
+                ctx.lineTo(0, r);
+                ctx.arcTo(0, 0, r, 0, r);
+                ctx.closePath();
+              }
+            : undefined
+        }
+      >
+        <KonvaImage
+          image={img}
+          x={0}
+          y={0}
+          width={displayWidth}
+          height={displayHeight}
+          scaleX={data.flipX ? -1 : 1}
+          scaleY={data.flipY ? -1 : 1}
+          offsetX={data.flipX ? displayWidth : 0}
+          offsetY={data.flipY ? displayHeight : 0}
+        />
+      </Group>
+    </>
+  );
+
   return (
     <>
       {/* Shadow -- rendered as a separate group OUTSIDE the main group
           so it isn't clipped or affected by the image group structure */}
       {data.shadow.enabled && (
         <Rect
-          x={data.x - totalW / 2 + bw}
-          y={data.y - totalH / 2 + bw}
-          width={displayWidth}
-          height={displayHeight}
-          cornerRadius={data.cornerRadius}
+          x={data.x - totalW / 2}
+          y={data.y - totalH / 2}
+          width={totalW}
+          height={totalH}
+          cornerRadius={hasChrome ? WINDOW_CHROME_FRAMES[frameType as "macos" | "windows"].borderRadius : hasDevice ? DEVICE_MOCKUP_FRAMES[frameType as "iphone" | "ipad" | "macbook"].bezelRadius : effectiveCornerRadius}
           fill="#000"
           opacity={0}
           shadowEnabled
@@ -202,56 +284,32 @@ export default function ScreenshotNode({
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
       >
-        {/* Inset border -- larger rounded rect behind the image */}
-        {data.insetBorder.enabled && (
-          <Rect
-            x={0}
-            y={0}
-            width={totalW}
-            height={totalH}
-            cornerRadius={data.cornerRadius + bw}
-            fill={data.insetBorder.color}
-            listening={false}
-          />
+        {/* Window Chrome Frame (macOS / Windows) */}
+        {hasChrome && (
+          <>
+            <WindowChrome
+              config={WINDOW_CHROME_FRAMES[frameType as "macos" | "windows"]}
+              theme={frameTheme}
+              width={displayWidth}
+              height={displayHeight}
+            />
+            {renderImageContent(0, chromeHeight)}
+          </>
         )}
 
-        {/* Clipped image */}
-        <Group
-          x={bw}
-          y={bw}
-          clipFunc={
-            data.cornerRadius > 0
-              ? (ctx) => {
-                  const r = data.cornerRadius;
-                  const w = displayWidth;
-                  const h = displayHeight;
-                  ctx.beginPath();
-                  ctx.moveTo(r, 0);
-                  ctx.lineTo(w - r, 0);
-                  ctx.arcTo(w, 0, w, r, r);
-                  ctx.lineTo(w, h - r);
-                  ctx.arcTo(w, h, w - r, h, r);
-                  ctx.lineTo(r, h);
-                  ctx.arcTo(0, h, 0, h - r, r);
-                  ctx.lineTo(0, r);
-                  ctx.arcTo(0, 0, r, 0, r);
-                  ctx.closePath();
-                }
-              : undefined
-          }
-        >
-          <KonvaImage
-            image={img}
-            x={0}
-            y={0}
+        {/* Device Mockup Frame (iPhone / iPad / MacBook) */}
+        {hasDevice && deviceInsets && (
+          <DeviceMockup
+            config={DEVICE_MOCKUP_FRAMES[frameType as "iphone" | "ipad" | "macbook"]}
             width={displayWidth}
             height={displayHeight}
-            scaleX={data.flipX ? -1 : 1}
-            scaleY={data.flipY ? -1 : 1}
-            offsetX={data.flipX ? displayWidth : 0}
-            offsetY={data.flipY ? displayHeight : 0}
-          />
-        </Group>
+          >
+            {renderImageContent(deviceInsets.left, deviceInsets.top)}
+          </DeviceMockup>
+        )}
+
+        {/* No frame -- standard rendering */}
+        {!hasChrome && !hasDevice && renderImageContent(0, 0)}
       </Group>
 
       {isSelected && !isCropActive && (

@@ -1,7 +1,13 @@
 import { create } from "zustand";
 import { temporal } from "zundo";
+import type { FrameType, FrameTheme } from "../components/composition/frames";
 
 // ---------- Types ----------
+
+export interface ImageFrame {
+  type: FrameType;
+  theme?: FrameTheme;
+}
 
 export interface CanvasImage {
   id: string;
@@ -26,6 +32,7 @@ export interface CanvasImage {
     color: string;
     width: number;
   };
+  frame?: ImageFrame;
 }
 
 export type AnnotationType =
@@ -163,6 +170,7 @@ interface CanvasActions {
   // Images
   addImage: (image: CanvasImage) => void;
   updateImage: (id: string, updates: Partial<CanvasImage>) => void;
+  updateImageFrame: (id: string, frame: ImageFrame | undefined) => void;
   removeImage: (id: string) => void;
 
   // Annotations
@@ -218,6 +226,12 @@ export const useCanvasStore = create<CanvasState & CanvasActions>()(
         set((s) => ({
           images: s.images.map((img) =>
             img.id === id ? { ...img, ...updates } : img,
+          ),
+        })),
+      updateImageFrame: (id, frame) =>
+        set((s) => ({
+          images: s.images.map((img) =>
+            img.id === id ? { ...img, frame } : img,
           ),
         })),
       removeImage: (id) =>

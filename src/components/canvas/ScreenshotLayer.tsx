@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Layer } from "react-konva";
 import { useCanvasStore } from "../../stores/canvas.store";
+import { WINDOW_CHROME_FRAMES, DEVICE_MOCKUP_FRAMES } from "../composition/frames";
 import ScreenshotNode from "./nodes/ScreenshotNode";
 import GuidesLayer, { type Guide } from "./GuidesLayer";
 
@@ -29,12 +30,35 @@ export default function ScreenshotLayer() {
           const displayW = Math.round(img.width * fitScale);
           const displayH = Math.round(img.height * fitScale);
 
+          // Calculate extra height from window chrome frames
+          const frameType = img.frame?.type;
+          let chromeHeight = 0;
+          if (frameType === "macos" || frameType === "windows") {
+            chromeHeight = WINDOW_CHROME_FRAMES[frameType].titleBarHeight;
+          }
+
+          // Calculate device mockup insets
+          let deviceInsets: { top: number; right: number; bottom: number; left: number } | null = null;
+          if (frameType === "iphone" || frameType === "ipad" || frameType === "macbook") {
+            const mockupConfig = DEVICE_MOCKUP_FRAMES[frameType];
+            const totalW = displayW / (1 - mockupConfig.screenInset.left - mockupConfig.screenInset.right);
+            const totalH = displayH / (1 - mockupConfig.screenInset.top - mockupConfig.screenInset.bottom);
+            deviceInsets = {
+              top: Math.round(totalH * mockupConfig.screenInset.top),
+              right: Math.round(totalW * mockupConfig.screenInset.right),
+              bottom: Math.round(totalH * mockupConfig.screenInset.bottom),
+              left: Math.round(totalW * mockupConfig.screenInset.left),
+            };
+          }
+
           return (
             <ScreenshotNode
               key={img.id}
               data={img}
               displayWidth={displayW}
               displayHeight={displayH}
+              chromeHeight={chromeHeight}
+              deviceInsets={deviceInsets}
               isSelected={selectedId === img.id}
               allImages={images}
               canvasWidth={canvasWidth}
