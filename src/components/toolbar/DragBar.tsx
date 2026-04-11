@@ -30,7 +30,7 @@ export default function DragBar({ stageRef }: DragBarProps) {
   return (
     <button
       onClick={() => void handleCopy()}
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-zinc-800/90 border border-zinc-700/60 rounded-lg backdrop-blur-sm px-4 py-2 select-none hover:bg-zinc-700/90 transition-colors cursor-pointer"
+      className="fixed bottom-14 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-zinc-800/90 border border-zinc-700/60 rounded-lg backdrop-blur-sm px-4 py-2 select-none hover:bg-zinc-700/90 transition-colors cursor-pointer"
     >
       {copied ? (
         <Check className="w-4 h-4 text-emerald-400" />

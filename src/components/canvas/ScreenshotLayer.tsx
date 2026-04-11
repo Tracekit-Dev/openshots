@@ -25,8 +25,8 @@ export default function ScreenshotLayer() {
     <>
       <Layer>
         {images.map((img) => {
-          // Contain-fit: scale image to fit within padded area
-          const fitScale = Math.min(availW / img.width, availH / img.height);
+          // Contain-fit: only shrink images that exceed the padded area, never scale up
+          const fitScale = Math.min(availW / img.width, availH / img.height, 1);
           const displayW = Math.round(img.width * fitScale);
           const displayH = Math.round(img.height * fitScale);
 
