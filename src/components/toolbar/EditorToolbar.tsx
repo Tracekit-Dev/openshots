@@ -10,6 +10,8 @@ import {
   Grid3X3,
   Crop,
   MessageCircle,
+  MessageSquare,
+  Lightbulb,
   Undo2,
   Redo2,
 } from "lucide-react";
@@ -32,6 +34,8 @@ const TOOLS: { mode: ToolMode; icon: React.ElementType; label: string; shortcut:
   { mode: "pixelate", icon: Grid3X3, label: "Pixelate", shortcut: "P" },
   { mode: "crop", icon: Crop, label: "Crop", shortcut: "C" },
   { mode: "callout", icon: MessageCircle, label: "Callout", shortcut: "N" },
+  { mode: "speech-bubble", icon: MessageSquare, label: "Speech Bubble", shortcut: "S" },
+  { mode: "spotlight", icon: Lightbulb, label: "Spotlight", shortcut: "L" },
 ];
 
 interface EditorToolbarProps {

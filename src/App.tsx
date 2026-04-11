@@ -10,9 +10,11 @@ import { useCaptureFlow } from "./hooks/useCaptureFlow";
 import { readImageFile } from "./ipc/capture";
 import { openProjectFromPath } from "./lib/project-file";
 import RegionOverlay from "./components/capture/RegionOverlay";
+import CountdownOverlay from "./components/capture/CountdownOverlay";
 import WindowPicker from "./components/capture/WindowPicker";
 import WaylandBanner from "./components/shell/WaylandBanner";
 import SettingsPage from "./components/shell/SettingsPage";
+import RecentProjects from "./components/shell/RecentProjects";
 import CanvasStage, { addScreenshotToCanvas } from "./components/canvas/CanvasStage";
 import EditorToolbar from "./components/toolbar/EditorToolbar";
 import BackgroundPopover from "./components/toolbar/BackgroundPopover";
@@ -20,6 +22,7 @@ import ElementPopover from "./components/toolbar/ElementPopover";
 import DragBar from "./components/toolbar/DragBar";
 import ShortcutsModal from "./components/shell/ShortcutsModal";
 import { useHotkeys } from "./hooks/useHotkeys";
+import { createAutoSaveProject, startAutoSave, stopAutoSave } from "./lib/auto-save";
 
 type View = "main" | "settings";
 
@@ -112,6 +115,7 @@ export default function App() {
     handleRegionStart,
     handleRegionCancel,
     handleWindowSelect,
+    handleTimerComplete,
   } = useCaptureFlow();
 
   const handleRegionComplete = useCallback(
@@ -208,6 +212,15 @@ export default function App() {
     }
   }, [captureState, lastCapturePath, setCaptureState]);
 
+  // Auto-save: start when first image is added, stop on unmount
+  useEffect(() => {
+    if (images.length > 0) {
+      void createAutoSaveProject();
+      startAutoSave();
+    }
+    return () => stopAutoSave();
+  }, [images.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Delete selected element (undo/redo is handled in CanvasStage)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -240,6 +253,18 @@ export default function App() {
     ];
     return () => { listeners.forEach((p) => p.then((fn) => fn())); };
   }, []);
+
+  // Countdown overlay for self-timer
+  if (captureState === "countdown") {
+    const delay = useAppStore.getState().selfTimerDelay || 3;
+    return (
+      <CountdownOverlay
+        seconds={delay}
+        onComplete={handleTimerComplete}
+        onCancel={() => setCaptureState("idle")}
+      />
+    );
+  }
 
   // Region selection overlay
   if (captureState === "selecting-region" && regionScreenshotPath) {
@@ -453,6 +478,9 @@ function EmptyState({
         <p className="text-[11px] text-zinc-600">
           You can also drag and drop images onto the canvas
         </p>
+
+        {/* Recent projects */}
+        <RecentProjects />
       </div>
     </div>
   );
