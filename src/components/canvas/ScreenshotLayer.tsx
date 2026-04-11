@@ -25,10 +25,17 @@ export default function ScreenshotLayer() {
     <>
       <Layer>
         {images.map((img) => {
-          // Contain-fit: only shrink images that exceed the padded area, never scale up
-          const fitScale = Math.min(availW / img.width, availH / img.height, 1);
-          const displayW = Math.round(img.width * fitScale);
-          const displayH = Math.round(img.height * fitScale);
+          // Contain-fit: shrink images that exceed the padded area
+          // Images smaller than available space keep their stored size (resize persists)
+          const exceedsW = img.width > availW;
+          const exceedsH = img.height > availH;
+          let displayW = img.width;
+          let displayH = img.height;
+          if (exceedsW || exceedsH) {
+            const fitScale = Math.min(availW / img.width, availH / img.height);
+            displayW = Math.round(img.width * fitScale);
+            displayH = Math.round(img.height * fitScale);
+          }
 
           // Calculate extra height from window chrome frames
           const frameVariant = img.frame?.variant;
