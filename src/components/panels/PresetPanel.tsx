@@ -62,23 +62,23 @@ export default function PresetPanel() {
 
       <button
         onClick={handleSave}
-        className="w-full px-3 py-1.5 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors"
+        className="w-full px-3 py-2 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none"
       >
         Save Current as Preset
       </button>
 
       {presets.length === 0 && (
-        <p className="text-[11px] text-zinc-600">No saved presets</p>
+        <p className="text-[11px] text-zinc-500">No saved presets</p>
       )}
 
       <div className="space-y-1">
         {presets.map((preset) => (
           <div
             key={preset.id}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-zinc-800/40 group"
+            className="flex items-center gap-2 px-2 py-2 rounded-md bg-zinc-800/40 group"
           >
             <div
-              className="w-5 h-4 rounded-sm shrink-0"
+              className="w-5 h-4 rounded-sm shrink-0 border border-zinc-700/50"
               style={{
                 background:
                   preset.background.type === "solid"
@@ -89,14 +89,14 @@ export default function PresetPanel() {
 
             <button
               onClick={() => handleApply(preset)}
-              className="flex-1 text-left text-[13px] text-zinc-400 hover:text-zinc-100 truncate transition-colors"
+              className="flex-1 text-left text-[13px] text-zinc-400 hover:text-zinc-100 truncate transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 outline-none"
             >
               {preset.name}
             </button>
 
             <button
               onClick={() => removePreset(preset.id)}
-              className="text-zinc-600 hover:text-red-400 text-[13px] opacity-0 group-hover:opacity-100 transition-opacity"
+              className="text-zinc-600 hover:text-red-400 text-[13px] opacity-0 group-hover:opacity-100 transition-opacity duration-150 focus-visible:ring-1 focus-visible:ring-red-500 outline-none"
             >
               ×
             </button>

@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicehash/tauri/v2/crates/tauri-config-schema/schema.json",
   "productName": "OpenShots",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "identifier": "app.openshots.capture",
   "build": {
     "frontendDist": "../dist",
@@ -23,7 +23,8 @@
         "minWidth": 1024,
         "minHeight": 700,
         "visible": true,
-        "decorations": true
+        "decorations": true,
+        "maximized": true
       }
     ],
     "trayIcon": {
@@ -34,6 +35,13 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "fileAssociations": [
+      {
+        "ext": ["openshots"],
+        "mimeType": "application/x-openshots",
+        "description": "OpenShots Project File"
+      }
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

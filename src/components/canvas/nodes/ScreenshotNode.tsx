@@ -3,15 +3,57 @@ import { Group, Image as KonvaImage, Rect, Transformer } from "react-konva";
 import Konva from "konva";
 import type { CanvasImage } from "../../../stores/canvas.store";
 import { useCanvasStore } from "../../../stores/canvas.store";
+import { useToolStore } from "../../../stores/tool.store";
+import type { Guide } from "../GuidesLayer";
+
+const SNAP_THRESHOLD = 8; // per D-10
+
+function getLineGuideStops(
+  allImages: CanvasImage[],
+  skipId: string,
+  canvasWidth: number,
+  canvasHeight: number,
+): { v: number[]; h: number[] } {
+  const v: number[] = [0, canvasWidth / 2, canvasWidth];
+  const h: number[] = [0, canvasHeight / 2, canvasHeight];
+  for (const img of allImages) {
+    if (img.id === skipId) continue;
+    // offset model: x,y is center, so edges are x +/- width/2
+    const left = img.x - img.width / 2;
+    const right = img.x + img.width / 2;
+    const top = img.y - img.height / 2;
+    const bottom = img.y + img.height / 2;
+    v.push(left, img.x, right);
+    h.push(top, img.y, bottom);
+  }
+  return { v, h };
+}
 
 interface ScreenshotNodeProps {
   data: CanvasImage;
+  displayWidth: number;
+  displayHeight: number;
   isSelected: boolean;
+  allImages: CanvasImage[];
+  canvasWidth: number;
+  canvasHeight: number;
+  setGuides: (guides: Guide[]) => void;
 }
 
-export default function ScreenshotNode({ data, isSelected }: ScreenshotNodeProps) {
+export default function ScreenshotNode({
+  data,
+  displayWidth,
+  displayHeight,
+  isSelected,
+  allImages,
+  canvasWidth,
+  canvasHeight,
+  setGuides,
+}: ScreenshotNodeProps) {
   const updateImage = useCanvasStore((s) => s.updateImage);
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
+  const activeTool = useToolStore((s) => s.activeTool);
+  const isCropActive = activeTool === "crop";
   const groupRef = useRef<Konva.Group>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
@@ -32,7 +74,75 @@ export default function ScreenshotNode({ data, isSelected }: ScreenshotNodeProps
 
   if (!img) return null;
 
+  const bw = data.insetBorder.enabled ? data.insetBorder.width : 0;
+  // Use display dimensions for rendering (affected by padding contain-fit)
+  // but keep data.width/height for transform calculations
+  const totalW = displayWidth + bw * 2;
+  const totalH = displayHeight + bw * 2;
+
+  const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
+    const node = e.target;
+
+    // Node edges in canvas space (offset model: x,y is center)
+    const nodeLeft = node.x() - totalW / 2;
+    const nodeRight = node.x() + totalW / 2;
+    const nodeTop = node.y() - totalH / 2;
+    const nodeBottom = node.y() + totalH / 2;
+    const nodeCenterX = node.x();
+    const nodeCenterY = node.y();
+
+    const stops = getLineGuideStops(allImages, data.id, canvasWidth, canvasHeight);
+    const newGuides: Guide[] = [];
+    let snapX: number | null = null;
+    let snapY: number | null = null;
+
+    // Check vertical (x-axis) snaps: left edge, center, right edge
+    const nodeVEdges = [
+      { pos: nodeLeft },
+      { pos: nodeCenterX },
+      { pos: nodeRight },
+    ];
+    for (const edge of nodeVEdges) {
+      for (const stop of stops.v) {
+        if (Math.abs(edge.pos - stop) < SNAP_THRESHOLD) {
+          snapX = stop - edge.pos + node.x();
+          newGuides.push({ lineGuide: stop, orientation: "V" });
+          break;
+        }
+      }
+      if (snapX !== null) break;
+    }
+
+    // Check horizontal (y-axis) snaps: top edge, center, bottom edge
+    const nodeHEdges = [
+      { pos: nodeTop },
+      { pos: nodeCenterY },
+      { pos: nodeBottom },
+    ];
+    for (const edge of nodeHEdges) {
+      for (const stop of stops.h) {
+        if (Math.abs(edge.pos - stop) < SNAP_THRESHOLD) {
+          snapY = stop - edge.pos + node.y();
+          newGuides.push({ lineGuide: stop, orientation: "H" });
+          break;
+        }
+      }
+      if (snapY !== null) break;
+    }
+
+    // Apply snap position
+    if (snapX !== null || snapY !== null) {
+      node.position({
+        x: snapX ?? node.x(),
+        y: snapY ?? node.y(),
+      });
+    }
+
+    setGuides(newGuides);
+  };
+
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
+    setGuides([]);
     updateImage(data.id, { x: e.target.x(), y: e.target.y() });
   };
 
@@ -46,26 +156,22 @@ export default function ScreenshotNode({ data, isSelected }: ScreenshotNodeProps
     updateImage(data.id, {
       x: node.x(),
       y: node.y(),
-      width: Math.round(data.width * scaleX),
-      height: Math.round(data.height * scaleY),
+      width: Math.round(displayWidth * scaleX),
+      height: Math.round(displayHeight * scaleY),
       rotation: node.rotation(),
     });
   };
 
-  const bw = data.insetBorder.enabled ? data.insetBorder.width : 0;
-  const totalW = data.width + bw * 2;
-  const totalH = data.height + bw * 2;
-
   return (
     <>
-      {/* Shadow — rendered as a separate group OUTSIDE the main group
+      {/* Shadow -- rendered as a separate group OUTSIDE the main group
           so it isn't clipped or affected by the image group structure */}
       {data.shadow.enabled && (
         <Rect
           x={data.x - totalW / 2 + bw}
           y={data.y - totalH / 2 + bw}
-          width={data.width}
-          height={data.height}
+          width={displayWidth}
+          height={displayHeight}
           cornerRadius={data.cornerRadius}
           fill="#000"
           opacity={0}
@@ -88,13 +194,15 @@ export default function ScreenshotNode({ data, isSelected }: ScreenshotNodeProps
         rotation={data.rotation}
         offsetX={totalW / 2}
         offsetY={totalH / 2}
-        draggable
-        onClick={() => setSelectedId(data.id)}
-        onTap={() => setSelectedId(data.id)}
+        draggable={!isCropActive}
+        listening={!isCropActive}
+        onClick={() => !isCropActive && setSelectedId(data.id)}
+        onTap={() => !isCropActive && setSelectedId(data.id)}
+        onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
       >
-        {/* Inset border — larger rounded rect behind the image */}
+        {/* Inset border -- larger rounded rect behind the image */}
         {data.insetBorder.enabled && (
           <Rect
             x={0}
@@ -115,8 +223,8 @@ export default function ScreenshotNode({ data, isSelected }: ScreenshotNodeProps
             data.cornerRadius > 0
               ? (ctx) => {
                   const r = data.cornerRadius;
-                  const w = data.width;
-                  const h = data.height;
+                  const w = displayWidth;
+                  const h = displayHeight;
                   ctx.beginPath();
                   ctx.moveTo(r, 0);
                   ctx.lineTo(w - r, 0);
@@ -136,17 +244,17 @@ export default function ScreenshotNode({ data, isSelected }: ScreenshotNodeProps
             image={img}
             x={0}
             y={0}
-            width={data.width}
-            height={data.height}
+            width={displayWidth}
+            height={displayHeight}
             scaleX={data.flipX ? -1 : 1}
             scaleY={data.flipY ? -1 : 1}
-            offsetX={data.flipX ? data.width : 0}
-            offsetY={data.flipY ? data.height : 0}
+            offsetX={data.flipX ? displayWidth : 0}
+            offsetY={data.flipY ? displayHeight : 0}
           />
         </Group>
       </Group>
 
-      {isSelected && (
+      {isSelected && !isCropActive && (
         <Transformer
           ref={trRef}
           rotateEnabled

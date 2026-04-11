@@ -2,6 +2,7 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useAppStore, DEFAULT_HOTKEYS } from "../../stores/app.store";
+import { APP_VERSION } from "../../lib/version";
 
 export default function SettingsPage({ onBack }: { onBack: () => void }) {
   const hotkeys = useAppStore((s) => s.hotkeys);
@@ -143,7 +144,7 @@ export default function SettingsPage({ onBack }: { onBack: () => void }) {
             <div className="p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-zinc-400">Version</span>
-                <span className="text-[13px] text-zinc-200">1.0.2</span>
+                <span className="text-[13px] text-zinc-200">{APP_VERSION}</span>
               </div>
               <div className="h-px bg-zinc-800/40" />
               <div className="flex items-center justify-between">

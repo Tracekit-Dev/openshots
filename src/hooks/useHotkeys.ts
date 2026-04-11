@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useToolStore } from "../stores/tool.store";
 import { useCanvasStore } from "../stores/canvas.store";
+import { saveProject, openProject } from "../lib/project-file";
 
 export interface ShortcutEntry {
   key: string;
@@ -20,6 +21,8 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   { key: "p", label: "P", description: "Pixelate tool", category: "Tools" },
   { key: "Meta+z", label: "Cmd+Z", description: "Undo", category: "Canvas" },
   { key: "Meta+Shift+z", label: "Cmd+Shift+Z", description: "Redo", category: "Canvas" },
+  { key: "Meta+s", label: "Cmd+S", description: "Save project", category: "Canvas" },
+  { key: "Meta+o", label: "Cmd+O", description: "Open project", category: "Canvas" },
   { key: "Delete", label: "Delete", description: "Delete selected", category: "Canvas" },
   { key: "Escape", label: "Esc", description: "Deselect", category: "Canvas" },
 ];
@@ -40,6 +43,20 @@ export function useHotkeys() {
       }
 
       const mod = e.metaKey || e.ctrlKey;
+
+      // Save project (Cmd+S)
+      if (mod && e.key === "s") {
+        e.preventDefault();
+        void saveProject();
+        return;
+      }
+
+      // Open project (Cmd+O)
+      if (mod && e.key === "o") {
+        e.preventDefault();
+        void openProject();
+        return;
+      }
 
       // Undo/Redo (handled in App.tsx but listed for completeness)
       if (mod && e.key === "z" && !e.shiftKey) return;

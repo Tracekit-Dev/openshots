@@ -7,6 +7,11 @@ import BackgroundLayer from "./BackgroundLayer";
 import ScreenshotLayer from "./ScreenshotLayer";
 import AnnotationLayer from "./AnnotationLayer";
 import PrivacyLayer from "./PrivacyLayer";
+import CropOverlay, { type CropRect } from "./CropOverlay";
+import ContextMenu from "./ContextMenu";
+import RemovalOverlay from "./RemovalOverlay";
+import { removeBackground } from "../../lib/background-removal/background-removal";
+import type { ProgressInfo } from "../../lib/background-removal/types";
 
 interface CanvasStageProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -18,13 +23,31 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   const [zoom, setZoom] = useState(1);
   // Arrow drag-to-draw state
   const [drawingArrowId, setDrawingArrowId] = useState<string | null>(null);
+  // Crop state
+  const [cropRect, setCropRect] = useState<CropRect | null>(null);
+  const [cropAspectRatio, setCropAspectRatio] = useState<number | null>(null);
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  // Background removal state
+  const [removalState, setRemovalState] = useState<{
+    imageId: string | null;
+    isProcessing: boolean;
+    progress: number;
+    status: string;
+    error: string | null;
+  }>({ imageId: null, isProcessing: false, progress: 0, status: "", error: null });
 
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
+  const padding = useCanvasStore((s) => s.padding);
+  const images = useCanvasStore((s) => s.images);
+  const selectedId = useCanvasStore((s) => s.selectedId);
   const setSelectedId = useCanvasStore((s) => s.setSelectedId);
+  const updateImage = useCanvasStore((s) => s.updateImage);
   const addAnnotation = useCanvasStore((s) => s.addAnnotation);
   const updateAnnotation = useCanvasStore((s) => s.updateAnnotation);
   const addPrivacyRegion = useCanvasStore((s) => s.addPrivacyRegion);
+  const reorderElement = useCanvasStore((s) => s.reorderElement);
   const activeTool = useToolStore((s) => s.activeTool);
   const strokeColor = useToolStore((s) => s.strokeColor);
   const fillColor = useToolStore((s) => s.fillColor);
@@ -36,6 +59,102 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   // Undo/redo
   const undo = useCallback(() => useCanvasStore.temporal.getState().undo(), []);
   const redo = useCallback(() => useCanvasStore.temporal.getState().redo(), []);
+
+  // Crop mode detection
+  const selectedImage = images.find((img) => img.id === selectedId);
+  const isCropActive = activeTool === "crop" && selectedImage != null;
+
+  // Compute display dimensions for selected image (same as ScreenshotLayer)
+  const availW = Math.max(canvasWidth - padding * 2, 100);
+  const availH = Math.max(canvasHeight - padding * 2, 100);
+  const selectedDisplayW = selectedImage ? Math.round(selectedImage.width * Math.min(availW / selectedImage.width, availH / selectedImage.height)) : 0;
+  const selectedDisplayH = selectedImage ? Math.round(selectedImage.height * Math.min(availW / selectedImage.width, availH / selectedImage.height)) : 0;
+
+  // Initialize crop rect when entering crop mode
+  useEffect(() => {
+    if (isCropActive && selectedImage && !cropRect) {
+      const bw = selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width : 0;
+      const totalW = selectedDisplayW + bw * 2;
+      const totalH = selectedDisplayH + bw * 2;
+      const imgLeft = selectedImage.x - totalW / 2;
+      const imgTop = selectedImage.y - totalH / 2;
+      setCropRect({ x: imgLeft, y: imgTop, width: totalW, height: totalH });
+    }
+    if (!isCropActive) {
+      setCropRect(null);
+      setCropAspectRatio(null);
+    }
+  }, [isCropActive, selectedImage, cropRect]);
+
+  // Crop confirm: offscreen canvas crop to data URL
+  const handleCropConfirm = useCallback(async () => {
+    if (!cropRect || !selectedImage) return;
+
+    // Load image — handle asset:// URLs by converting to data URL first
+    let imageSrc = selectedImage.src;
+    if (
+      imageSrc.startsWith("asset://") ||
+      imageSrc.startsWith("https://asset.localhost") ||
+      imageSrc.startsWith("http://asset.localhost")
+    ) {
+      // Convert asset URL to data URL via canvas
+      const tmpImg = new window.Image();
+      tmpImg.crossOrigin = "anonymous";
+      tmpImg.src = imageSrc;
+      imageSrc = await new Promise<string>((resolve, reject) => {
+        tmpImg.onload = () => {
+          const c = document.createElement("canvas");
+          c.width = tmpImg.naturalWidth;
+          c.height = tmpImg.naturalHeight;
+          const ctx = c.getContext("2d")!;
+          ctx.drawImage(tmpImg, 0, 0);
+          resolve(c.toDataURL("image/png"));
+        };
+        tmpImg.onerror = () => reject(new Error("Failed to load image for crop"));
+      });
+    }
+
+    const img = new window.Image();
+    img.src = imageSrc;
+    img.onload = () => {
+      const bw = selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width : 0;
+      const totalW = selectedDisplayW + bw * 2;
+      const totalH = selectedDisplayH + bw * 2;
+      const imgLeft = selectedImage.x - totalW / 2;
+      const imgTop = selectedImage.y - totalH / 2;
+      const scaleX = img.naturalWidth / totalW;
+      const scaleY = img.naturalHeight / totalH;
+      const sx = Math.round((cropRect.x - imgLeft) * scaleX);
+      const sy = Math.round((cropRect.y - imgTop) * scaleY);
+      const sw = Math.round(cropRect.width * scaleX);
+      const sh = Math.round(cropRect.height * scaleY);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = sw;
+      canvas.height = sh;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      const newSrc = canvas.toDataURL("image/png");
+
+      updateImage(selectedImage.id, {
+        src: newSrc,
+        width: cropRect.width,
+        height: cropRect.height,
+        x: cropRect.x + cropRect.width / 2,
+        y: cropRect.y + cropRect.height / 2,
+        cornerRadius: 0,
+      });
+      setActiveTool("select");
+      setCropRect(null);
+    };
+  }, [cropRect, selectedImage, updateImage, setActiveTool]);
+
+  // Crop cancel
+  const handleCropCancel = useCallback(() => {
+    setActiveTool("select");
+    setCropRect(null);
+    setCropAspectRatio(null);
+  }, [setActiveTool]);
 
   // Base scale fits canvas to container, zoom multiplies it
   const baseScale = Math.min(
@@ -81,6 +200,18 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
 
+      // Crop keyboard shortcuts
+      if (isCropActive && e.key === "Enter") {
+        e.preventDefault();
+        handleCropConfirm();
+        return;
+      }
+      if (isCropActive && e.key === "Escape") {
+        e.preventDefault();
+        handleCropCancel();
+        return;
+      }
+
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key === "0") {
         e.preventDefault();
@@ -94,10 +225,89 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
         e.preventDefault();
         redo();
       }
+      // Z-ordering shortcuts
+      if (mod && e.key === "]" && e.shiftKey && selectedId) {
+        e.preventDefault();
+        reorderElement(selectedId, "front");
+      } else if (mod && e.key === "]" && selectedId) {
+        e.preventDefault();
+        reorderElement(selectedId, "forward");
+      } else if (mod && e.key === "[" && e.shiftKey && selectedId) {
+        e.preventDefault();
+        reorderElement(selectedId, "back");
+      } else if (mod && e.key === "[" && selectedId) {
+        e.preventDefault();
+        reorderElement(selectedId, "backward");
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [undo, redo]);
+  }, [undo, redo, isCropActive, handleCropConfirm, handleCropCancel, selectedId, reorderElement]);
+
+  // Background removal handler
+  const handleRemoveBackground = useCallback(async (elementId: string) => {
+    const image = useCanvasStore.getState().images.find((img) => img.id === elementId);
+    if (!image) return;
+
+    setRemovalState({
+      imageId: elementId,
+      isProcessing: true,
+      progress: 0,
+      status: "loading",
+      error: null,
+    });
+
+    try {
+      // Convert asset:// URLs to data URL for the worker
+      let imageDataUrl = image.src;
+      if (
+        imageDataUrl.startsWith("asset://") ||
+        imageDataUrl.startsWith("https://asset.localhost") ||
+        imageDataUrl.startsWith("http://asset.localhost")
+      ) {
+        const tmpImg = new window.Image();
+        tmpImg.crossOrigin = "anonymous";
+        tmpImg.src = imageDataUrl;
+        imageDataUrl = await new Promise<string>((resolve, reject) => {
+          tmpImg.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = tmpImg.naturalWidth;
+            canvas.height = tmpImg.naturalHeight;
+            const ctx = canvas.getContext("2d")!;
+            ctx.drawImage(tmpImg, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+          };
+          tmpImg.onerror = () => reject(new Error("Failed to load image for background removal"));
+        });
+      }
+
+      const resultDataUrl = await removeBackground(
+        imageDataUrl,
+        (info: ProgressInfo) => {
+          setRemovalState((prev) => ({
+            ...prev,
+            progress: info.progress ?? prev.progress,
+            status: info.status,
+          }));
+        },
+      );
+
+      useCanvasStore.getState().updateImage(elementId, { src: resultDataUrl });
+      setRemovalState({ imageId: null, isProcessing: false, progress: 0, status: "", error: null });
+    } catch (err) {
+      setRemovalState((prev) => ({
+        ...prev,
+        isProcessing: false,
+        error: err instanceof Error ? err.message : "Background removal failed",
+      }));
+    }
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    if (removalState.imageId) {
+      handleRemoveBackground(removalState.imageId);
+    }
+  }, [removalState.imageId, handleRemoveBackground]);
 
   // Drag-and-drop is handled in App.tsx (always mounted)
 
@@ -133,6 +343,9 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+      // Skip placement when crop tool is active
+      if (activeTool === "crop") return;
+
       // For select tool, only deselect when clicking empty canvas
       if (activeTool === "select") {
         if (e.target === e.target.getStage()) {
@@ -224,6 +437,22 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           });
           setActiveTool("select");
           break;
+        case "callout": {
+          const annotations = useCanvasStore.getState().annotations;
+          const existingCallouts = annotations.filter((a) => a.type === "callout");
+          addAnnotation({
+            id,
+            type: "callout",
+            x,
+            y,
+            number: existingCallouts.length + 1,
+            fill: strokeColor,
+            textColor: "#ffffff",
+            rotation: 0,
+          });
+          setActiveTool("select");
+          break;
+        }
         case "blur":
         case "pixelate":
           addPrivacyRegion({
@@ -280,46 +509,165 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           onTap={handleStageClick}
           onMouseMove={handleStageMouseMove}
           onMouseUp={handleStageMouseUp}
+          onContextMenu={(e) => {
+            e.evt.preventDefault();
+            if (selectedId) {
+              setContextMenu({ x: e.evt.clientX, y: e.evt.clientY });
+            }
+          }}
         >
           <BackgroundLayer />
           <ScreenshotLayer />
-          <PrivacyLayer />
-          <AnnotationLayer />
+          {!isCropActive && <PrivacyLayer />}
+          {!isCropActive && <AnnotationLayer />}
+          {isCropActive && cropRect && selectedImage && (
+            <CropOverlay
+              canvasWidth={canvasWidth}
+              canvasHeight={canvasHeight}
+              cropRect={cropRect}
+              setCropRect={setCropRect}
+              aspectRatio={cropAspectRatio}
+              imageBounds={{
+                x: selectedImage.x - (selectedDisplayW + (selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width * 2 : 0)) / 2,
+                y: selectedImage.y - (selectedDisplayH + (selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width * 2 : 0)) / 2,
+                width: selectedDisplayW + (selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width * 2 : 0),
+                height: selectedDisplayH + (selectedImage.insetBorder.enabled ? selectedImage.insetBorder.width * 2 : 0),
+              }}
+            />
+          )}
         </Stage>
       </div>
 
+      {/* Crop toolbar */}
+      {isCropActive && (
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-3 py-2 backdrop-blur-sm z-10">
+          {[
+            { label: "Free", value: null },
+            { label: "16:9", value: 16 / 9 },
+            { label: "4:3", value: 4 / 3 },
+            { label: "1:1", value: 1 },
+          ].map(({ label, value }) => (
+            <button
+              key={label}
+              onClick={() => {
+                setCropAspectRatio(value);
+                // Immediately reshape crop box to match ratio
+                if (value && cropRect) {
+                  const centerX = cropRect.x + cropRect.width / 2;
+                  const centerY = cropRect.y + cropRect.height / 2;
+                  let newW = cropRect.width;
+                  let newH = cropRect.height;
+                  if (newW / newH > value) {
+                    newW = newH * value;
+                  } else {
+                    newH = newW / value;
+                  }
+                  setCropRect({
+                    x: centerX - newW / 2,
+                    y: centerY - newH / 2,
+                    width: newW,
+                    height: newH,
+                  });
+                }
+              }}
+              className={`px-2 py-1 text-[12px] rounded-md transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 ${
+                cropAspectRatio === value
+                  ? "bg-zinc-100 text-zinc-900"
+                  : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          <div className="w-px h-5 bg-zinc-700/60" />
+          <button
+            onClick={handleCropCancel}
+            className="px-3 py-1 text-[13px] rounded-md bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
+          >
+            Discard
+          </button>
+          <button
+            onClick={handleCropConfirm}
+            className="px-3 py-1 text-[13px] rounded-md bg-zinc-100 text-zinc-900 hover:bg-zinc-200 active:bg-zinc-300 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
+          >
+            Crop
+          </button>
+          <span className="text-[11px] text-zinc-500 ml-2">Enter · Esc</span>
+        </div>
+      )}
+
+      {/* Context menu */}
+      {contextMenu && selectedId && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          elementId={selectedId}
+          onClose={() => setContextMenu(null)}
+          onRemoveBackground={handleRemoveBackground}
+        />
+      )}
+
+      {/* Background removal overlay */}
+      <RemovalOverlay
+        imageId={removalState.imageId}
+        isProcessing={removalState.isProcessing}
+        progress={removalState.progress}
+        status={removalState.status}
+        error={removalState.error}
+        onRetry={handleRetry}
+        imageRect={(() => {
+          if (!removalState.imageId) return undefined;
+          const img = images.find((i) => i.id === removalState.imageId);
+          if (!img) return undefined;
+          const bw = img.insetBorder.enabled ? img.insetBorder.width : 0;
+          const totalW = (img.width + bw * 2) * scale;
+          const totalH = (img.height + bw * 2) * scale;
+          const stageEl = containerRef.current?.querySelector("canvas");
+          const stageRect = stageEl?.getBoundingClientRect();
+          if (!stageRect) return undefined;
+          const cx = stageRect.left + img.x * scale;
+          const cy = stageRect.top + img.y * scale;
+          return {
+            x: cx - totalW / 2,
+            y: cy - totalH / 2,
+            width: totalW,
+            height: totalH,
+          };
+        })()}
+      />
+
       {/* Zoom and undo controls */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-1.5 py-1 backdrop-blur-sm">
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-2 py-1 backdrop-blur-sm">
         <button
           onClick={undo}
-          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+          className="px-2 py-1 text-[12px] text-zinc-400 hover:text-zinc-100 active:text-white rounded transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
           title="Undo (Cmd+Z)"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6.69 3L3 13"/></svg>
         </button>
         <button
           onClick={redo}
-          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+          className="px-2 py-1 text-[12px] text-zinc-400 hover:text-zinc-100 active:text-white rounded transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
           title="Redo (Cmd+Shift+Z)"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6.69 3L21 13"/></svg>
         </button>
-        <div className="w-px h-4 bg-zinc-800/60 mx-0.5" />
+        <div className="w-px h-4 bg-zinc-800/60 mx-1" />
         <button
           onClick={() => setZoom((z) => Math.max(z * 0.8, 0.25))}
-          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+          className="px-2 py-1 text-[12px] text-zinc-400 hover:text-zinc-100 active:text-white rounded transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
         >
           -
         </button>
         <button
           onClick={() => setZoom(1)}
-          className="px-2 py-0.5 text-[11px] text-zinc-400 hover:text-zinc-100 rounded hover:bg-zinc-800/60 transition-colors min-w-[3rem] text-center"
+          className="px-2 py-1 text-[11px] text-zinc-400 hover:text-zinc-100 rounded hover:bg-zinc-800/60 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900 min-w-[3rem] text-center"
         >
           {Math.round(zoom * 100)}%
         </button>
         <button
           onClick={() => setZoom((z) => Math.min(z * 1.2, 4))}
-          className="px-1.5 py-0.5 text-[12px] text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+          className="px-2 py-1 text-[12px] text-zinc-400 hover:text-zinc-100 active:text-white rounded transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-500 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-900"
         >
           +
         </button>

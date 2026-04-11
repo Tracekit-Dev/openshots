@@ -8,6 +8,7 @@ import { useAppStore } from "./stores/app.store";
 import { useCanvasStore, type CanvasImage } from "./stores/canvas.store";
 import { useCaptureFlow } from "./hooks/useCaptureFlow";
 import { readImageFile } from "./ipc/capture";
+import { openProjectFromPath } from "./lib/project-file";
 import RegionOverlay from "./components/capture/RegionOverlay";
 import WindowPicker from "./components/capture/WindowPicker";
 import WaylandBanner from "./components/shell/WaylandBanner";
@@ -175,8 +176,15 @@ export default function App() {
     getCurrentWebview()
       .onDragDropEvent(async (event) => {
         if (event.payload.type === "drop") {
+          let projectOpened = false;
           for (const filePath of event.payload.paths) {
             const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+            // Handle .openshots project files — only open the first one
+            if (ext === "openshots" && !projectOpened) {
+              projectOpened = true;
+              void openProjectFromPath(filePath);
+              continue;
+            }
             if (!["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) continue;
             try {
               const dataUrl = await readImageFile(filePath);
@@ -214,6 +222,24 @@ export default function App() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Menu bar events (File > Open, File > Save, File > Export)
+  useEffect(() => {
+    const listeners = [
+      listen("menu:open-project", () => {
+        import("./lib/project-file").then((m) => m.openProject());
+      }),
+      listen("menu:save-project", () => {
+        import("./lib/project-file").then((m) => m.saveProject());
+      }),
+      listen("menu:export", () => {
+        // Focus the export panel — trigger via DOM click on export button if available
+        const exportBtn = document.querySelector("[data-export-trigger]") as HTMLButtonElement | null;
+        if (exportBtn) exportBtn.click();
+      }),
+    ];
+    return () => { listeners.forEach((p) => p.then((fn) => fn())); };
   }, []);
 
   // Region selection overlay
@@ -302,7 +328,7 @@ export default function App() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar */}
-        <aside className="w-52 border-r border-zinc-800/60 overflow-y-auto px-3 py-4 space-y-6 shrink-0">
+        <aside className="w-48 border-r border-zinc-800/60 overflow-y-auto px-3 py-4 space-y-6 shrink-0">
           <ToolPanel />
           <AspectRatioPanel />
         </aside>

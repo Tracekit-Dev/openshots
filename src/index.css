@@ -16,32 +16,106 @@ body,
   padding: 0;
 }
 
-/* Range input styling */
+/* Custom range input styling for dark zinc theme */
 input[type="range"] {
-  height: 4px;
+  -webkit-appearance: none;
   appearance: none;
-  background: #3f3f46;
+  height: 4px;
+  background: rgb(63 63 70 / 0.6); /* zinc-800/60 */
   border-radius: 2px;
   outline: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
   appearance: none;
   width: 14px;
   height: 14px;
+  background: rgb(161 161 170); /* zinc-400 */
   border-radius: 50%;
-  background: #d4d4d8;
   cursor: pointer;
-  border: 2px solid #27272a;
+  transition: background-color 150ms;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-  background: #fafafa;
+  background: rgb(212 212 216); /* zinc-300 */
 }
 
-/* Checkbox styling */
+input[type="range"]::-webkit-slider-thumb:active {
+  background: rgb(244 244 245); /* zinc-100 */
+}
+
+input[type="range"]:focus-visible {
+  outline: 1px solid rgb(113 113 122); /* zinc-500 */
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Firefox range input */
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: rgb(63 63 70 / 0.6);
+  border-radius: 2px;
+  border: none;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: rgb(161 161 170);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  background: rgb(212 212 216);
+}
+
+input[type="range"]::-moz-range-thumb:active {
+  background: rgb(244 244 245);
+}
+
+/* Custom checkbox styling */
 input[type="checkbox"] {
-  accent-color: #a1a1aa;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: rgb(63 63 70 / 0.6);
+  border: 1px solid rgb(82 82 91 / 0.6); /* zinc-600/60 */
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 150ms, border-color 150ms;
+  position: relative;
+  flex-shrink: 0;
+}
+
+input[type="checkbox"]:hover {
+  border-color: rgb(113 113 122); /* zinc-500 */
+}
+
+input[type="checkbox"]:checked {
+  background: rgb(244 244 245); /* zinc-100 */
+  border-color: rgb(244 244 245);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 5px;
+  height: 9px;
+  border: solid rgb(24 24 27); /* zinc-900 */
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 1px solid rgb(113 113 122);
+  outline-offset: 2px;
 }
 
 /* Scrollbar styling */

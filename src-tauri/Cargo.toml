@@ -1,7 +1,8 @@
 [package]
 name = "openshots"
-version = "1.0.2"
+version = "1.1.0"
 edition = "2021"
+default-run = "openshots"
 
 [lib]
 name = "openshots_lib"
@@ -23,3 +24,9 @@ serde_json = "1"
 image = { version = "0.25", features = ["png", "jpeg"] }
 uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
+clap = { version = "4", features = ["derive"] }
+glob = "0.3"
+
+[[bin]]
+name = "openshots-cli"
+path = "src/bin/cli.rs"
