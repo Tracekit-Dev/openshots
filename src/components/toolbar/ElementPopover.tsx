@@ -636,6 +636,7 @@ function AnnotationControls({
       )}
 
       {/* Font Size -- text annotations only */}
+      {/* Font Size -- text annotations */}
       {annotation.type === "text" && (
         <div className="flex items-center gap-2">
           <label className="text-[11px] text-zinc-500 w-12">Size</label>
@@ -657,6 +658,132 @@ function AnnotationControls({
           </span>
         </div>
       )}
+
+      {/* Speech Bubble controls */}
+      {annotation.type === "speech-bubble" && (() => {
+        const bubble = annotation as import("../../stores/canvas.store").SpeechBubbleAnnotation;
+        return (
+          <>
+            {/* Text color */}
+            <div>
+              <label className="text-[11px] text-zinc-500">Text Color</label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {COLOR_PRESETS.map((color) => (
+                  <button
+                    key={`tc-${color}`}
+                    onClick={() => updateAnnotation(annotation.id, { textColor: color })}
+                    className={`w-6 h-6 rounded-md border transition-[transform,border-color] duration-150 ${
+                      bubble.textColor === color ? "border-white scale-110" : "border-zinc-700 hover:border-zinc-500"
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Fill color */}
+            <div>
+              <label className="text-[11px] text-zinc-500">Bubble Fill</label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {["#ffffff", "#f4f4f5", "#18181b", "#ef4444", "#3b82f6", "#22c55e", "#eab308", "#a855f7"].map((color) => (
+                  <button
+                    key={`bf-${color}`}
+                    onClick={() => updateAnnotation(annotation.id, { fill: color })}
+                    className={`w-6 h-6 rounded-md border transition-[transform,border-color] duration-150 ${
+                      bubble.fill === color ? "border-white scale-110" : "border-zinc-700 hover:border-zinc-500"
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Font size */}
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-zinc-500 w-12">Size</label>
+              <input
+                type="range"
+                min={10}
+                max={48}
+                step={1}
+                value={bubble.fontSize}
+                onChange={(e) => updateAnnotation(annotation.id, { fontSize: Number(e.target.value) })}
+                className="flex-1 accent-zinc-400"
+              />
+              <span className="text-[11px] text-zinc-500 w-7 text-right">{bubble.fontSize}</span>
+            </div>
+
+            {/* Tail direction */}
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-zinc-500 w-12">Tail</label>
+              <div className="flex gap-1">
+                {(["bottom", "top", "left", "right"] as const).map((dir) => (
+                  <button
+                    key={dir}
+                    onClick={() => updateAnnotation(annotation.id, { tailDirection: dir })}
+                    className={`px-2 py-1 text-[11px] rounded-md transition-colors duration-150 ${
+                      bubble.tailDirection === dir
+                        ? "bg-zinc-100 text-zinc-900"
+                        : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
+                    }`}
+                  >
+                    {dir.charAt(0).toUpperCase() + dir.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Corner radius */}
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-zinc-500 w-12">Round</label>
+              <input
+                type="range"
+                min={0}
+                max={24}
+                value={bubble.cornerRadius}
+                onChange={(e) => updateAnnotation(annotation.id, { cornerRadius: Number(e.target.value) })}
+                className="flex-1 accent-zinc-400"
+              />
+              <span className="text-[11px] text-zinc-500 w-7 text-right">{bubble.cornerRadius}</span>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* Spotlight controls */}
+      {annotation.type === "spotlight" && (() => {
+        const spot = annotation as import("../../stores/canvas.store").SpotlightAnnotation;
+        return (
+          <>
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-zinc-500 w-12">Opacity</label>
+              <input
+                type="range"
+                min={10}
+                max={90}
+                value={Math.round((spot.overlayOpacity ?? 0.5) * 100)}
+                onChange={(e) => updateAnnotation(annotation.id, { overlayOpacity: Number(e.target.value) / 100 })}
+                className="flex-1 accent-zinc-400"
+              />
+              <span className="text-[11px] text-zinc-500 w-7 text-right">
+                {Math.round((spot.overlayOpacity ?? 0.5) * 100)}%
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-zinc-500 w-12">Round</label>
+              <input
+                type="range"
+                min={0}
+                max={50}
+                value={spot.cornerRadius ?? 0}
+                onChange={(e) => updateAnnotation(annotation.id, { cornerRadius: Number(e.target.value) })}
+                className="flex-1 accent-zinc-400"
+              />
+              <span className="text-[11px] text-zinc-500 w-7 text-right">{spot.cornerRadius ?? 0}</span>
+            </div>
+          </>
+        );
+      })()}
     </>
   );
 }
