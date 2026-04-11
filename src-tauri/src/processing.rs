@@ -2,7 +2,7 @@ use image::{ImageBuffer, ImageEncoder, Rgba, RgbaImage};
 use std::path::Path;
 
 /// Preset structure matching the frontend CanvasPreset JSON shape.
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliPreset {
     pub name: String,
@@ -18,7 +18,7 @@ pub struct CliPreset {
     pub inset_border_width: u32,
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliBackground {
     pub bg_type: String,

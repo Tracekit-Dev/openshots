@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
+use openshots_lib::presets;
 use openshots_lib::processing::{self, CliPreset};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Parser)]
 #[command(name = "openshots", about = "OpenShots CLI - Screenshot beautification tool")]
@@ -35,6 +36,9 @@ enum Commands {
         quality: u32,
     },
 
+    /// List available presets (built-in + user)
+    ListPresets,
+
     /// Add annotations to an image
     Annotate,
 
@@ -62,7 +66,7 @@ enum Commands {
     },
 }
 
-/// Load a preset from a file path or by name from ~/.openshots/presets.json.
+/// Load a preset from a file path or by name (built-in + user presets).
 fn load_preset(preset_arg: &str) -> Result<CliPreset, String> {
     // If it looks like a file path, load directly
     if preset_arg.contains('/') || preset_arg.contains('\\') || preset_arg.ends_with(".json") {
@@ -74,35 +78,8 @@ fn load_preset(preset_arg: &str) -> Result<CliPreset, String> {
         return Ok(preset);
     }
 
-    // Otherwise, look up by name in ~/.openshots/presets.json
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .map_err(|_| "Could not determine home directory".to_string())?;
-    let presets_path = PathBuf::from(home).join(".openshots").join("presets.json");
-
-    if !presets_path.exists() {
-        return Err(format!(
-            "Preset '{}' not found. No presets file at {}. Use a path to a JSON file instead.",
-            preset_arg,
-            presets_path.display()
-        ));
-    }
-
-    let contents = std::fs::read_to_string(&presets_path)
-        .map_err(|e| format!("Failed to read {}: {e}", presets_path.display()))?;
-    let presets: Vec<CliPreset> = serde_json::from_str(&contents)
-        .map_err(|e| format!("Failed to parse presets.json: {e}"))?;
-
-    presets
-        .into_iter()
-        .find(|p| p.name.eq_ignore_ascii_case(preset_arg))
-        .ok_or_else(|| {
-            format!(
-                "Preset '{}' not found in {}",
-                preset_arg,
-                presets_path.display()
-            )
-        })
+    // Otherwise, resolve by name (built-in first, then user presets)
+    presets::resolve_preset(preset_arg)
 }
 
 fn run_beautify(
@@ -230,6 +207,20 @@ fn main() {
             format,
             quality,
         } => run_beautify(&preset, &input, &output, &format, quality),
+
+        Commands::ListPresets => {
+            let all = presets::list_all_presets();
+            if all.is_empty() {
+                println!("No presets available.");
+            } else {
+                println!("{:<20} {}", "NAME", "SOURCE");
+                println!("{}", "-".repeat(35));
+                for (name, is_builtin) in &all {
+                    let source = if *is_builtin { "built-in" } else { "user" };
+                    println!("{:<20} {}", name, source);
+                }
+            }
+        }
 
         Commands::Annotate => {
             println!(
