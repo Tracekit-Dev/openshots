@@ -16,6 +16,7 @@ import SettingsPage from "./components/shell/SettingsPage";
 import CanvasStage, { addScreenshotToCanvas } from "./components/canvas/CanvasStage";
 import EditorToolbar from "./components/toolbar/EditorToolbar";
 import BackgroundPopover from "./components/toolbar/BackgroundPopover";
+import ElementPopover from "./components/toolbar/ElementPopover";
 import DragBar from "./components/toolbar/DragBar";
 import ShortcutsModal from "./components/shell/ShortcutsModal";
 import { useHotkeys } from "./hooks/useHotkeys";
@@ -343,6 +344,9 @@ export default function App() {
         {/* Drag bar -- absolutely positioned at bottom of canvas area */}
         {hasImages && <DragBar stageRef={stageRef} />}
       </div>
+
+      {/* Element property popover -- anchored near selected element */}
+      {hasImages && <ElementPopover stageRef={stageRef} />}
 
       {/* Background popover */}
       {bgPopover && (
