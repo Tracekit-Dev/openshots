@@ -10,18 +10,19 @@ import { useCaptureFlow } from "./hooks/useCaptureFlow";
 import { readImageFile } from "./ipc/capture";
 import { openProjectFromPath } from "./lib/project-file";
 import RegionOverlay from "./components/capture/RegionOverlay";
+import CountdownOverlay from "./components/capture/CountdownOverlay";
 import WindowPicker from "./components/capture/WindowPicker";
 import WaylandBanner from "./components/shell/WaylandBanner";
 import SettingsPage from "./components/shell/SettingsPage";
+import RecentProjects from "./components/shell/RecentProjects";
 import CanvasStage, { addScreenshotToCanvas } from "./components/canvas/CanvasStage";
-import BackgroundPanel from "./components/panels/BackgroundPanel";
-import StylePanel from "./components/panels/StylePanel";
-import ToolPanel from "./components/panels/ToolPanel";
-import AspectRatioPanel from "./components/panels/AspectRatioPanel";
-import ExportPanel from "./components/panels/ExportPanel";
-import PresetPanel from "./components/panels/PresetPanel";
+import EditorToolbar from "./components/toolbar/EditorToolbar";
+import BackgroundPopover from "./components/toolbar/BackgroundPopover";
+import ElementPopover from "./components/toolbar/ElementPopover";
+import DragBar from "./components/toolbar/DragBar";
 import ShortcutsModal from "./components/shell/ShortcutsModal";
 import { useHotkeys } from "./hooks/useHotkeys";
+import { createAutoSaveProject, startAutoSave, stopAutoSave } from "./lib/auto-save";
 
 type View = "main" | "settings";
 
@@ -66,8 +67,10 @@ function addImageFromUrl(url: string) {
       src: url,
       x: cw / 2,
       y: ch / 2,
-      width: w,
-      height: h,
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight,
       rotation: 0,
       cornerRadius: 12,
       flipX: false,
@@ -100,8 +103,11 @@ export default function App() {
   const regionScreenshotPath = useAppStore((s) => s.regionScreenshotPath);
   const setRegionScreenshotPath = useAppStore((s) => s.setRegionScreenshotPath);
   const images = useCanvasStore((s) => s.images);
+  const selfTimerDelay = useAppStore((s) => s.selfTimerDelay);
+  const setSelfTimerDelay = useAppStore((s) => s.setSelfTimerDelay);
   const [view, setView] = useState<View>("main");
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [bgPopover, setBgPopover] = useState<{ x: number; y: number } | null>(null);
   const stageRef = useRef<Konva.Stage>(null);
 
   useHotkeys();
@@ -111,6 +117,7 @@ export default function App() {
     handleRegionStart,
     handleRegionCancel,
     handleWindowSelect,
+    handleTimerComplete,
   } = useCaptureFlow();
 
   const handleRegionComplete = useCallback(
@@ -207,6 +214,15 @@ export default function App() {
     }
   }, [captureState, lastCapturePath, setCaptureState]);
 
+  // Auto-save: start when first image is added, stop on unmount
+  useEffect(() => {
+    if (images.length > 0) {
+      void createAutoSaveProject();
+      startAutoSave();
+    }
+    return () => stopAutoSave();
+  }, [images.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Delete selected element (undo/redo is handled in CanvasStage)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -234,13 +250,23 @@ export default function App() {
         import("./lib/project-file").then((m) => m.saveProject());
       }),
       listen("menu:export", () => {
-        // Focus the export panel — trigger via DOM click on export button if available
-        const exportBtn = document.querySelector("[data-export-trigger]") as HTMLButtonElement | null;
-        if (exportBtn) exportBtn.click();
+        window.dispatchEvent(new Event("openExportPopover"));
       }),
     ];
     return () => { listeners.forEach((p) => p.then((fn) => fn())); };
   }, []);
+
+  // Countdown overlay for self-timer
+  if (captureState === "countdown") {
+    const delay = useAppStore.getState().selfTimerDelay || 3;
+    return (
+      <CountdownOverlay
+        seconds={delay}
+        onComplete={handleTimerComplete}
+        onCancel={() => setCaptureState("idle")}
+      />
+    );
+  }
 
   // Region selection overlay
   if (captureState === "selecting-region" && regionScreenshotPath) {
@@ -264,7 +290,7 @@ export default function App() {
     <div className="flex h-screen flex-col bg-zinc-950 text-zinc-100">
       <WaylandBanner />
 
-      {/* Toolbar */}
+      {/* Capture bar */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-zinc-800/60">
         <div className="flex items-center gap-1">
           <button
@@ -296,6 +322,25 @@ export default function App() {
           Upload
         </button>
 
+        <div className="w-px h-4 bg-zinc-800/60 mx-1" />
+
+        {/* Self-timer toggle */}
+        <div className="flex items-center gap-0.5">
+          {[0, 3, 5, 10].map((delay) => (
+            <button
+              key={delay}
+              onClick={() => setSelfTimerDelay(delay as 0 | 3 | 5 | 10)}
+              className={`px-2 py-1 text-[11px] rounded-md transition-colors ${
+                selfTimerDelay === delay
+                  ? "bg-zinc-100 text-zinc-900"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {delay === 0 ? "No Timer" : `${delay}s`}
+            </button>
+          ))}
+        </div>
+
         <div className="flex-1" />
 
         {captureState === "capturing" && (
@@ -325,17 +370,16 @@ export default function App() {
         </button>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left sidebar */}
-        <aside className="w-48 border-r border-zinc-800/60 overflow-y-auto px-3 py-4 space-y-6 shrink-0">
-          <ToolPanel />
-          <AspectRatioPanel />
-        </aside>
+      {/* Editor toolbar -- only visible when images exist */}
+      {hasImages && <EditorToolbar stageRef={stageRef} />}
 
-        {/* Canvas area */}
+      {/* Canvas area -- full width, no sidebars */}
+      <div className="flex-1 min-h-0 overflow-hidden relative">
         {hasImages ? (
-          <CanvasStage stageRef={stageRef} />
+          <CanvasStage
+            stageRef={stageRef}
+            onBackgroundClick={(pos) => setBgPopover(pos)}
+          />
         ) : (
           <EmptyState
             onFullscreen={() => void handleFullscreen()}
@@ -345,14 +389,17 @@ export default function App() {
           />
         )}
 
-        {/* Right sidebar */}
-        <aside className="w-60 border-l border-zinc-800/60 overflow-y-auto px-3 py-4 space-y-6 shrink-0">
-          <BackgroundPanel />
-          <StylePanel />
-          <PresetPanel />
-          <ExportPanel stageRef={stageRef} />
-        </aside>
+        {/* Drag bar -- absolutely positioned at bottom of canvas area */}
+        {hasImages && <DragBar stageRef={stageRef} />}
       </div>
+
+      {/* Element property popover -- anchored near selected element */}
+      {hasImages && <ElementPopover stageRef={stageRef} />}
+
+      {/* Background popover */}
+      {bgPopover && (
+        <BackgroundPopover position={bgPopover} onClose={() => setBgPopover(null)} />
+      )}
 
       {/* Window picker modal */}
       {captureState === "selecting-window" && (
@@ -382,7 +429,7 @@ function EmptyState({
   onUpload: () => void;
 }) {
   return (
-    <div className="flex-1 flex items-center justify-center bg-zinc-900/50">
+    <div className="flex-1 flex items-center justify-center bg-zinc-900/50 h-full">
       <div className="flex flex-col items-center gap-6 max-w-sm">
         {/* Icon */}
         <div className="w-16 h-16 rounded-2xl bg-zinc-800/80 flex items-center justify-center">
@@ -452,6 +499,9 @@ function EmptyState({
         <p className="text-[11px] text-zinc-600">
           You can also drag and drop images onto the canvas
         </p>
+
+        {/* Recent projects */}
+        <RecentProjects />
       </div>
     </div>
   );

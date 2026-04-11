@@ -10,6 +10,9 @@ export interface CanvasImage {
   y: number;
   width: number;
   height: number;
+  naturalWidth?: number;   // original image dimensions (for padding contain-fit)
+  naturalHeight?: number;
+  userResized?: boolean;   // true if user manually resized via Transformer
   rotation: number;
   cornerRadius: number;
   flipX: boolean;
@@ -26,6 +29,11 @@ export interface CanvasImage {
     color: string;
     width: number;
   };
+  frame?: {
+    type: "window-chrome" | "device-mockup";
+    variant: string;
+    theme?: "light" | "dark";
+  };
 }
 
 export type AnnotationType =
@@ -34,7 +42,9 @@ export type AnnotationType =
   | "ellipse"
   | "text"
   | "emoji"
-  | "callout";
+  | "callout"
+  | "speech-bubble"
+  | "spotlight";
 
 export interface AnnotationBase {
   id: string;
@@ -48,6 +58,7 @@ export interface ArrowAnnotation extends AnnotationBase {
   type: "arrow";
   points: number[];
   stroke: string;
+  fill?: string;
   strokeWidth: number;
   curvature: number;
   dash?: number[];
@@ -98,13 +109,40 @@ export interface CalloutAnnotation extends AnnotationBase {
   textColor: string;
 }
 
+export interface SpeechBubbleAnnotation extends AnnotationBase {
+  type: "speech-bubble";
+  width: number;
+  height: number;
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+  fill: string;
+  textColor: string;
+  stroke: string;
+  strokeWidth: number;
+  cornerRadius: number;
+  tailDirection: "bottom" | "top" | "left" | "right";
+  tailSize: number;
+}
+
+export interface SpotlightAnnotation extends AnnotationBase {
+  type: "spotlight";
+  width: number;
+  height: number;
+  cornerRadius: number;
+  overlayOpacity: number;
+  overlayColor: string;
+}
+
 export type AnnotationShape =
   | ArrowAnnotation
   | RectAnnotation
   | EllipseAnnotation
   | TextAnnotation
   | EmojiAnnotation
-  | CalloutAnnotation;
+  | CalloutAnnotation
+  | SpeechBubbleAnnotation
+  | SpotlightAnnotation;
 
 export interface PrivacyRegion {
   id: string;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { useAppStore } from "../stores/app.store";
+import { useAppStore, type SelfTimerDelay } from "../stores/app.store";
 import {
   captureFullscreen,
   captureAllMonitors,
@@ -14,44 +14,62 @@ export function useCaptureFlow() {
   const setRegionScreenshotPath = useAppStore(
     (s) => s.setRegionScreenshotPath,
   );
+  const setCountdownRemaining = useAppStore((s) => s.setCountdownRemaining);
+  const setCountdownMode = useAppStore((s) => s.setCountdownMode);
+
+  /** Execute the actual capture after countdown (or immediately if no timer). */
+  const executeCapture = useCallback(
+    async (mode: "fullscreen" | "region" | "window") => {
+      setCaptureState("capturing");
+      try {
+        const ok = await checkScreenPermission();
+        if (!ok) {
+          setCaptureState("idle");
+          return;
+        }
+
+        if (mode === "fullscreen") {
+          const path = await captureFullscreen();
+          console.log("[Screenshots] Fullscreen capture path:", path);
+          setLastCapturePath(path);
+          setCaptureState("captured");
+        } else if (mode === "region") {
+          const path = await captureAllMonitors();
+          setRegionScreenshotPath(path);
+          setCaptureState("selecting-region");
+        } else if (mode === "window") {
+          setCaptureState("selecting-window");
+        }
+      } catch (err) {
+        console.error(`[Screenshots] ${mode} capture failed:`, err);
+        setCaptureState("idle");
+      }
+    },
+    [setCaptureState, setLastCapturePath, setRegionScreenshotPath],
+  );
+
+  /** Start countdown or capture immediately depending on selfTimerDelay. */
+  const startCaptureWithTimer = useCallback(
+    (mode: "fullscreen" | "region" | "window") => {
+      const delay = useAppStore.getState().selfTimerDelay;
+      if (delay > 0) {
+        setCountdownRemaining(delay);
+        setCountdownMode(mode);
+        setCaptureState("countdown");
+      } else {
+        void executeCapture(mode);
+      }
+    },
+    [executeCapture, setCaptureState, setCountdownRemaining, setCountdownMode],
+  );
 
   const handleFullscreen = useCallback(async () => {
-    setCaptureState("capturing");
-    try {
-      const ok = await checkScreenPermission();
-      console.log("[Screenshots] Screen permission:", ok);
-      if (!ok) {
-        setCaptureState("idle");
-        return;
-      }
-      // Rust hides the window, captures, then shows it again
-      const path = await captureFullscreen();
-      console.log("[Screenshots] Fullscreen capture path:", path);
-      setLastCapturePath(path);
-      setCaptureState("captured");
-    } catch (err) {
-      console.error("[Screenshots] Fullscreen capture failed:", err);
-      setCaptureState("idle");
-    }
-  }, [setCaptureState, setLastCapturePath]);
+    startCaptureWithTimer("fullscreen");
+  }, [startCaptureWithTimer]);
 
   const handleRegionStart = useCallback(async () => {
-    setCaptureState("capturing");
-    try {
-      const ok = await checkScreenPermission();
-      if (!ok) {
-        setCaptureState("idle");
-        return;
-      }
-      // Capture all monitors for region selection across displays
-      const path = await captureAllMonitors();
-      setRegionScreenshotPath(path);
-      setCaptureState("selecting-region");
-    } catch (err) {
-      console.error("Region capture failed:", err);
-      setCaptureState("idle");
-    }
-  }, [setCaptureState, setRegionScreenshotPath]);
+    startCaptureWithTimer("region");
+  }, [startCaptureWithTimer]);
 
   const handleRegionCancel = useCallback(() => {
     setRegionScreenshotPath(null);
@@ -59,8 +77,8 @@ export function useCaptureFlow() {
   }, [setCaptureState, setRegionScreenshotPath]);
 
   const handleWindowStart = useCallback(() => {
-    setCaptureState("selecting-window");
-  }, [setCaptureState]);
+    startCaptureWithTimer("window");
+  }, [startCaptureWithTimer]);
 
   const handleWindowSelect = useCallback(
     async (windowId: number) => {
@@ -82,6 +100,18 @@ export function useCaptureFlow() {
     [setCaptureState, setLastCapturePath],
   );
 
+  /** Called by CountdownOverlay when countdown reaches 0. */
+  const handleTimerComplete = useCallback(() => {
+    const mode = useAppStore.getState().countdownMode;
+    setCountdownMode(null);
+    setCountdownRemaining(0);
+    if (mode) {
+      void executeCapture(mode);
+    } else {
+      setCaptureState("idle");
+    }
+  }, [executeCapture, setCaptureState, setCountdownMode, setCountdownRemaining]);
+
   // Listen for capture events from tray menu and global shortcuts
   useEffect(() => {
     const unlisteners = [
@@ -95,11 +125,22 @@ export function useCaptureFlow() {
     };
   }, [handleFullscreen, handleRegionStart, handleWindowStart]);
 
+  // Listen for self-timer changes from tray menu
+  useEffect(() => {
+    const unlisten = listen<number>("capture:set-timer", (event) => {
+      useAppStore.getState().setSelfTimerDelay(event.payload as SelfTimerDelay);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
   return {
     handleFullscreen,
     handleRegionStart,
     handleRegionCancel,
     handleWindowStart,
     handleWindowSelect,
+    handleTimerComplete,
   };
 }

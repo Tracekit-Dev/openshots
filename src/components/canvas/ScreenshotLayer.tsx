@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Layer } from "react-konva";
 import { useCanvasStore } from "../../stores/canvas.store";
+import { WINDOW_CHROME_FRAMES, DEVICE_MOCKUP_FRAMES } from "../composition/frames";
 import ScreenshotNode from "./nodes/ScreenshotNode";
 import GuidesLayer, { type Guide } from "./GuidesLayer";
 
@@ -24,10 +25,40 @@ export default function ScreenshotLayer() {
     <>
       <Layer>
         {images.map((img) => {
-          // Contain-fit: scale image to fit within padded area
-          const fitScale = Math.min(availW / img.width, availH / img.height);
-          const displayW = Math.round(img.width * fitScale);
-          const displayH = Math.round(img.height * fitScale);
+          // If user manually resized, use their dimensions as-is
+          // Otherwise, contain-fit using natural dimensions (padding works)
+          let displayW: number;
+          let displayH: number;
+          if (img.userResized) {
+            displayW = img.width;
+            displayH = img.height;
+          } else {
+            const fitScale = Math.min(availW / img.width, availH / img.height);
+            displayW = Math.round(img.width * fitScale);
+            displayH = Math.round(img.height * fitScale);
+          }
+
+          // Calculate extra height from window chrome frames
+          const frameVariant = img.frame?.variant;
+          const frameCategory = img.frame?.type;
+          let chromeHeight = 0;
+          if (frameCategory === "window-chrome" && (frameVariant === "macos" || frameVariant === "windows")) {
+            chromeHeight = WINDOW_CHROME_FRAMES[frameVariant].titleBarHeight;
+          }
+
+          // Calculate device mockup insets
+          let deviceInsets: { top: number; right: number; bottom: number; left: number } | null = null;
+          if (frameCategory === "device-mockup" && (frameVariant === "iphone" || frameVariant === "ipad" || frameVariant === "macbook")) {
+            const mockupConfig = DEVICE_MOCKUP_FRAMES[frameVariant];
+            const totalW = displayW / (1 - mockupConfig.screenInset.left - mockupConfig.screenInset.right);
+            const totalH = displayH / (1 - mockupConfig.screenInset.top - mockupConfig.screenInset.bottom);
+            deviceInsets = {
+              top: Math.round(totalH * mockupConfig.screenInset.top),
+              right: Math.round(totalW * mockupConfig.screenInset.right),
+              bottom: Math.round(totalH * mockupConfig.screenInset.bottom),
+              left: Math.round(totalW * mockupConfig.screenInset.left),
+            };
+          }
 
           return (
             <ScreenshotNode
@@ -35,6 +66,8 @@ export default function ScreenshotLayer() {
               data={img}
               displayWidth={displayW}
               displayHeight={displayH}
+              chromeHeight={chromeHeight}
+              deviceInsets={deviceInsets}
               isSelected={selectedId === img.id}
               allImages={images}
               canvasWidth={canvasWidth}

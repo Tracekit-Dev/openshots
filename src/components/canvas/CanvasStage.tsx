@@ -15,9 +15,10 @@ import type { ProgressInfo } from "../../lib/background-removal/types";
 
 interface CanvasStageProps {
   stageRef: React.RefObject<Konva.Stage | null>;
+  onBackgroundClick?: (pos: { x: number; y: number }) => void;
 }
 
-export default function CanvasStage({ stageRef }: CanvasStageProps) {
+export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
   const [zoom, setZoom] = useState(1);
@@ -156,11 +157,10 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
     setCropAspectRatio(null);
   }, [setActiveTool]);
 
-  // Base scale fits canvas to container, zoom multiplies it
+  // Base scale fits canvas to container (contain mode), zoom multiplies it
   const baseScale = Math.min(
     containerSize.width / canvasWidth,
     containerSize.height / canvasHeight,
-    1,
   );
   const scale = baseScale * zoom;
 
@@ -350,6 +350,10 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
       if (activeTool === "select") {
         if (e.target === e.target.getStage()) {
           setSelectedId(null);
+          if (onBackgroundClick) {
+            const evt = e.evt as MouseEvent;
+            onBackgroundClick({ x: evt.clientX, y: evt.clientY });
+          }
         }
         return;
       }
@@ -453,6 +457,43 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
           setActiveTool("select");
           break;
         }
+        case "speech-bubble":
+          addAnnotation({
+            id,
+            type: "speech-bubble",
+            x,
+            y,
+            width: 200,
+            height: 80,
+            text: "Hello!",
+            fontSize: 16,
+            fontFamily: "-apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif",
+            fill: "#ffffff",
+            textColor: "#1a1a1a",
+            stroke: strokeColor,
+            strokeWidth: 2,
+            cornerRadius: 12,
+            tailDirection: "bottom",
+            tailSize: 16,
+            rotation: 0,
+          });
+          setActiveTool("select");
+          break;
+        case "spotlight":
+          addAnnotation({
+            id,
+            type: "spotlight",
+            x,
+            y,
+            width: 200,
+            height: 150,
+            cornerRadius: 8,
+            overlayOpacity: 0.6,
+            overlayColor: "#000000",
+            rotation: 0,
+          });
+          setActiveTool("select");
+          break;
         case "blur":
         case "pixelate":
           addPrivacyRegion({
@@ -488,7 +529,7 @@ export default function CanvasStage({ stageRef }: CanvasStageProps) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 flex items-center justify-center overflow-hidden bg-zinc-900/50 relative"
+      className="w-full h-full flex items-center justify-center overflow-hidden bg-zinc-900/50 relative"
     >
       <div
         style={{
@@ -701,8 +742,10 @@ export function addScreenshotToCanvas(dataUrl: string) {
       src: dataUrl,
       x: canvasWidth / 2,
       y: canvasHeight / 2,
-      width: w,
-      height: h,
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight,
       rotation: 0,
       cornerRadius: 12,
       flipX: false,

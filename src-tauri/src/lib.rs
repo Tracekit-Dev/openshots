@@ -148,7 +148,11 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(tauri_plugin_window_state::StateFlags::POSITION)
+                .build(),
+        )
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -193,6 +197,12 @@ pub fn run() {
             handle.emit("platform:flags", PlatformFlags { is_wayland })?;
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::capture::capture_fullscreen,
             commands::capture::capture_all_monitors,
@@ -206,7 +216,11 @@ pub fn run() {
             commands::export::export_image,
             commands::export::save_text_file,
             commands::export::read_text_file,
+            commands::export::save_temp_export,
             commands::share::share_file,
+            commands::tray::update_tray_menu,
+            commands::preview::show_capture_preview,
+            commands::preview::dismiss_preview,
             update_hotkeys,
         ])
         .run(tauri::generate_context!())

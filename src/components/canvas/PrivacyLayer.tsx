@@ -71,6 +71,7 @@ function PrivacyRect({
     <>
       <Rect
         ref={rectRef}
+        id={region.id}
         x={region.x}
         y={region.y}
         width={region.width}

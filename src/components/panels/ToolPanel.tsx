@@ -15,6 +15,8 @@ const TOOLS: { mode: ToolMode; label: string; shortcut: string }[] = [
   { mode: "pixelate", label: "Pixel", shortcut: "P" },
   { mode: "crop", label: "Crop", shortcut: "C" },
   { mode: "callout", label: "Callout", shortcut: "N" },
+  { mode: "speech-bubble", label: "Bubble", shortcut: "S" },
+  { mode: "spotlight", label: "Spot", shortcut: "L" },
 ];
 
 export default function ToolPanel() {
@@ -75,6 +77,12 @@ export default function ToolPanel() {
             break;
           case "callout":
             updateAnnotation(ann.id, { fill: color });
+            break;
+          case "speech-bubble":
+            updateAnnotation(ann.id, { stroke: color });
+            break;
+          case "spotlight":
+            updateAnnotation(ann.id, { overlayColor: color });
             break;
         }
       }

@@ -10,7 +10,9 @@ export type ToolMode =
   | "blur"
   | "pixelate"
   | "crop"
-  | "callout";
+  | "callout"
+  | "speech-bubble"
+  | "spotlight";
 
 // Professional annotation color palette (desaturated, CleanShot X style)
 export const COLOR_PRESETS = [
