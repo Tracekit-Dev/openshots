@@ -310,7 +310,7 @@ export default function App() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar */}
-        <aside className="w-52 border-r border-zinc-800/60 overflow-y-auto px-3 py-4 space-y-6 shrink-0">
+        <aside className="w-48 border-r border-zinc-800/60 overflow-y-auto px-3 py-4 space-y-6 shrink-0">
           <ToolPanel />
           <AspectRatioPanel />
         </aside>
