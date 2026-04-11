@@ -23,7 +23,8 @@
         "minWidth": 1024,
         "minHeight": 700,
         "visible": true,
-        "decorations": true
+        "decorations": true,
+        "maximized": true
       }
     ],
     "trayIcon": {

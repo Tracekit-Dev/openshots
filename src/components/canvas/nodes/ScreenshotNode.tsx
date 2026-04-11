@@ -31,6 +31,8 @@ function getLineGuideStops(
 
 interface ScreenshotNodeProps {
   data: CanvasImage;
+  displayWidth: number;
+  displayHeight: number;
   isSelected: boolean;
   allImages: CanvasImage[];
   canvasWidth: number;
@@ -40,6 +42,8 @@ interface ScreenshotNodeProps {
 
 export default function ScreenshotNode({
   data,
+  displayWidth,
+  displayHeight,
   isSelected,
   allImages,
   canvasWidth,
@@ -71,8 +75,10 @@ export default function ScreenshotNode({
   if (!img) return null;
 
   const bw = data.insetBorder.enabled ? data.insetBorder.width : 0;
-  const totalW = data.width + bw * 2;
-  const totalH = data.height + bw * 2;
+  // Use display dimensions for rendering (affected by padding contain-fit)
+  // but keep data.width/height for transform calculations
+  const totalW = displayWidth + bw * 2;
+  const totalH = displayHeight + bw * 2;
 
   const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
@@ -150,8 +156,8 @@ export default function ScreenshotNode({
     updateImage(data.id, {
       x: node.x(),
       y: node.y(),
-      width: Math.round(data.width * scaleX),
-      height: Math.round(data.height * scaleY),
+      width: Math.round(displayWidth * scaleX),
+      height: Math.round(displayHeight * scaleY),
       rotation: node.rotation(),
     });
   };
@@ -164,8 +170,8 @@ export default function ScreenshotNode({
         <Rect
           x={data.x - totalW / 2 + bw}
           y={data.y - totalH / 2 + bw}
-          width={data.width}
-          height={data.height}
+          width={displayWidth}
+          height={displayHeight}
           cornerRadius={data.cornerRadius}
           fill="#000"
           opacity={0}
@@ -217,8 +223,8 @@ export default function ScreenshotNode({
             data.cornerRadius > 0
               ? (ctx) => {
                   const r = data.cornerRadius;
-                  const w = data.width;
-                  const h = data.height;
+                  const w = displayWidth;
+                  const h = displayHeight;
                   ctx.beginPath();
                   ctx.moveTo(r, 0);
                   ctx.lineTo(w - r, 0);
@@ -238,12 +244,12 @@ export default function ScreenshotNode({
             image={img}
             x={0}
             y={0}
-            width={data.width}
-            height={data.height}
+            width={displayWidth}
+            height={displayHeight}
             scaleX={data.flipX ? -1 : 1}
             scaleY={data.flipY ? -1 : 1}
-            offsetX={data.flipX ? data.width : 0}
-            offsetY={data.flipY ? data.height : 0}
+            offsetX={data.flipX ? displayWidth : 0}
+            offsetY={data.flipY ? displayHeight : 0}
           />
         </Group>
       </Group>

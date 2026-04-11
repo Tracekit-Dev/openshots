@@ -12,18 +12,29 @@ import GuidesLayer, { type Guide } from "./GuidesLayer";
 export default function ScreenshotLayer() {
   const images = useCanvasStore((s) => s.images);
   const selectedId = useCanvasStore((s) => s.selectedId);
+  const padding = useCanvasStore((s) => s.padding);
   const canvasWidth = useCanvasStore((s) => s.canvasWidth);
   const canvasHeight = useCanvasStore((s) => s.canvasHeight);
   const [guides, setGuides] = useState<Guide[]>([]);
+
+  const availW = Math.max(canvasWidth - padding * 2, 100);
+  const availH = Math.max(canvasHeight - padding * 2, 100);
 
   return (
     <>
       <Layer>
         {images.map((img) => {
+          // Contain-fit: scale image to fit within padded area
+          const fitScale = Math.min(availW / img.width, availH / img.height);
+          const displayW = Math.round(img.width * fitScale);
+          const displayH = Math.round(img.height * fitScale);
+
           return (
             <ScreenshotNode
               key={img.id}
               data={img}
+              displayWidth={displayW}
+              displayHeight={displayH}
               isSelected={selectedId === img.id}
               allImages={images}
               canvasWidth={canvasWidth}
