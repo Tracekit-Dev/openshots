@@ -6,7 +6,6 @@ use tauri::{
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 mod commands;
-pub mod processing;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PlatformFlags {
@@ -171,6 +170,7 @@ pub fn run() {
             commands::capture::convert_heic_thumbnail,
             commands::capture::convert_heic_to_data_url,
             commands::export::export_image,
+            commands::share::share_file,
             update_hotkeys,
         ])
         .run(tauri::generate_context!())
