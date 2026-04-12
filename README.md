@@ -137,6 +137,11 @@ curl -L https://github.com/Tracekit-Dev/openshots/releases/latest/download/opens
 Invoke-WebRequest -Uri https://github.com/Tracekit-Dev/openshots/releases/latest/download/openshots-cli-windows-x64.exe -OutFile "$env:LOCALAPPDATA\openshots-cli.exe"
 ```
 
+These URLs always point to the latest release. To pin a specific version, replace `latest` with the tag:
+```
+https://github.com/Tracekit-Dev/openshots/releases/download/v2.0.4/openshots-cli-darwin-arm64
+```
+
 Verify the installation:
 ```bash
 openshots-cli --version
