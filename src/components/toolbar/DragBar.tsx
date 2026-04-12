@@ -19,9 +19,11 @@ export default function DragBar({ stageRef }: DragBarProps) {
       const currentScale = stage.scaleX();
       const pixelRatio = 2 / currentScale;
       const dataUrl = stage.toDataURL({ pixelRatio, mimeType: "image/png" });
-      const resp = await fetch(dataUrl);
-      const buffer = await resp.arrayBuffer();
-      const tauriImage = await Image.fromBytes(new Uint8Array(buffer));
+      const base64 = dataUrl.split(",")[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const tauriImage = await Image.fromBytes(bytes);
       await writeImage(tauriImage);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

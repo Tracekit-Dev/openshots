@@ -105,9 +105,11 @@ export default function ExportPopover({ stageRef, anchorEl, onClose }: ExportPop
       const currentScale = stage.scaleX();
       const pixelRatio = scale / currentScale;
       const dataUrl = stage.toDataURL({ pixelRatio, mimeType: "image/png" });
-      const resp = await fetch(dataUrl);
-      const buffer = await resp.arrayBuffer();
-      const tauriImage = await Image.fromBytes(new Uint8Array(buffer));
+      const base64 = dataUrl.split(",")[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const tauriImage = await Image.fromBytes(bytes);
       await writeImage(tauriImage);
       setLastExport("Copied to clipboard!");
       setTimeout(() => setLastExport(null), 2000);
