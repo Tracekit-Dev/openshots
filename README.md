@@ -113,7 +113,34 @@ npx tauri build
 
 ## CLI Reference
 
-OpenShots includes a CLI (`openshots-cli`) for batch processing and automation. After building from source, the binary is at `src-tauri/target/debug/openshots-cli` (or `release/` for production builds).
+OpenShots includes a CLI (`openshots-cli`) for batch processing and automation.
+
+### Install CLI
+
+**macOS (Apple Silicon):**
+```bash
+curl -L https://github.com/Tracekit-Dev/openshots/releases/latest/download/openshots-cli-darwin-arm64 -o /usr/local/bin/openshots-cli && chmod +x /usr/local/bin/openshots-cli
+```
+
+**macOS (Intel):**
+```bash
+curl -L https://github.com/Tracekit-Dev/openshots/releases/latest/download/openshots-cli-darwin-x64 -o /usr/local/bin/openshots-cli && chmod +x /usr/local/bin/openshots-cli
+```
+
+**Linux:**
+```bash
+curl -L https://github.com/Tracekit-Dev/openshots/releases/latest/download/openshots-cli-linux-x64 -o /usr/local/bin/openshots-cli && chmod +x /usr/local/bin/openshots-cli
+```
+
+**Windows (PowerShell):**
+```powershell
+Invoke-WebRequest -Uri https://github.com/Tracekit-Dev/openshots/releases/latest/download/openshots-cli-windows-x64.exe -OutFile "$env:LOCALAPPDATA\openshots-cli.exe"
+```
+
+Verify the installation:
+```bash
+openshots-cli --version
+```
 
 ### Presets
 
