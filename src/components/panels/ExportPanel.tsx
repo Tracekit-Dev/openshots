@@ -3,6 +3,8 @@ import { useCanvasStore } from "../../stores/canvas.store";
 import { exportCanvas, type ExportFormat } from "../../ipc/export";
 import { saveProject } from "../../lib/project-file";
 import { shareFile } from "../../ipc/share";
+import { writeImage } from "@tauri-apps/plugin-clipboard-manager";
+import { Image } from "@tauri-apps/api/image";
 import Konva from "konva";
 
 interface ExportPanelProps {
@@ -68,12 +70,13 @@ export default function ExportPanel({ stageRef }: ExportPanelProps) {
     if (!stage) return;
 
     try {
-      const dataUrl = stage.toDataURL({ pixelRatio: 2 });
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
-      ]);
+      const currentScale = stage.scaleX();
+      const pixelRatio = scale / currentScale;
+      const dataUrl = stage.toDataURL({ pixelRatio, mimeType: "image/png" });
+      const resp = await fetch(dataUrl);
+      const buffer = await resp.arrayBuffer();
+      const tauriImage = await Image.fromBytes(new Uint8Array(buffer));
+      await writeImage(tauriImage);
       setLastExport("Copied to clipboard!");
       setTimeout(() => setLastExport(null), 2000);
     } catch (err) {

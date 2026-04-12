@@ -20,6 +20,7 @@
     "dialog:allow-open",
     "core:webview:default",
     "opener:default",
-    "core:window:allow-create"
+    "core:window:allow-create",
+    "clipboard-manager:allow-write-image"
   ]
 }

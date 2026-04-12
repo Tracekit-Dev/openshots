@@ -1,6 +1,6 @@
 [package]
 name = "openshots"
-version = "2.0.1"
+version = "2.0.2"
 edition = "2021"
 default-run = "openshots"
 
@@ -12,7 +12,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-store = "2"
 tauri-plugin-window-state = "2"
@@ -26,6 +26,7 @@ uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
 clap = { version = "4", features = ["derive"] }
 glob = "0.3"
+tauri-plugin-clipboard-manager = "2"
 
 [[bin]]
 name = "openshots-cli"
