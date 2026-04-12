@@ -298,7 +298,7 @@ pub fn apply_corner_radius(img: &mut RgbaImage, radius: u32) {
 }
 
 /// Render a simple shadow (darkened, offset rectangle behind the image).
-fn render_shadow(
+pub fn render_shadow(
     canvas: &mut RgbaImage,
     img_x: u32,
     img_y: u32,
@@ -356,7 +356,7 @@ fn render_shadow(
 }
 
 /// Draw an inset border on an image.
-fn draw_inset_border(img: &mut RgbaImage, border_width: u32) {
+pub fn draw_inset_border(img: &mut RgbaImage, border_width: u32) {
     if border_width == 0 {
         return;
     }

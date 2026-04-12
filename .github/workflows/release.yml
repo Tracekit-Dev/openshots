@@ -77,6 +77,41 @@ jobs:
             **macOS:** Download the `.dmg` file, open it, and drag OpenShots to Applications.
             **Windows:** Download and run the `.msi` installer.
             **Linux:** Download the `.AppImage` (make executable with `chmod +x`) or `.deb` package.
+
+            ### CLI
+            Standalone CLI binaries are attached below. Download the one for your platform, make it executable, and add it to your PATH.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Build CLI binary
+        run: cargo build --release --manifest-path src-tauri/Cargo.toml --bin openshots-cli ${{ matrix.os == 'macos-latest' && matrix.args == '--target aarch64-apple-darwin' && '--target aarch64-apple-darwin' || matrix.os == 'macos-latest' && '--target x86_64-apple-darwin' || '' }}
+
+      - name: Rename CLI binary (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          if [ "${{ matrix.label }}" = "macOS-arm64" ]; then
+            TARGET_DIR="src-tauri/target/aarch64-apple-darwin/release"
+            SUFFIX="darwin-arm64"
+          elif [ "${{ matrix.label }}" = "macOS-x64" ]; then
+            TARGET_DIR="src-tauri/target/x86_64-apple-darwin/release"
+            SUFFIX="darwin-x64"
+          else
+            TARGET_DIR="src-tauri/target/release"
+            SUFFIX="linux-x64"
+          fi
+          cp "$TARGET_DIR/openshots-cli" "openshots-cli-$SUFFIX"
+          chmod +x "openshots-cli-$SUFFIX"
+
+      - name: Rename CLI binary (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Copy-Item "src-tauri/target/release/openshots-cli.exe" "openshots-cli-windows-x64.exe"
+
+      - name: Upload CLI to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: openshots-cli-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

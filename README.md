@@ -40,10 +40,10 @@ OpenShots is a cross-platform desktop app built with Tauri (Rust + React). Captu
 - Auto-save projects and reopen recent work
 
 **Automation**
-- CLI for batch processing with preset support
-- `openshots beautify --preset <name> --input <glob> --output <dir>`
-- `openshots export --input input.png --output output.webp --format webp`
-- `openshots annotate` is reserved for a future release; use the GUI for annotation workflows today
+- Full CLI for batch processing, annotation, privacy, and export
+- All commands support an optional `--preset` flag for beautification
+- Manage presets: create, copy, edit, inspect
+- See [CLI Reference](#cli-reference) below
 
 ## Install
 
@@ -51,11 +51,11 @@ Download the latest release for your platform:
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [.dmg](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.0_aarch64.dmg) |
-| macOS (Intel) | [.dmg](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.0_x64.dmg) |
-| Windows | [.msi](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.0_x64_en-US.msi) |
-| Linux (AppImage) | [.AppImage](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.0_amd64.AppImage) |
-| Linux (deb) | [.deb](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.0_amd64.deb) |
+| macOS (Apple Silicon) | [.dmg](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.4_aarch64.dmg) |
+| macOS (Intel) | [.dmg](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.4_x64.dmg) |
+| Windows | [.msi](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.4_x64_en-US.msi) |
+| Linux (AppImage) | [.AppImage](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.4_amd64.AppImage) |
+| Linux (deb) | [.deb](https://github.com/Tracekit-Dev/openshots/releases/latest/download/OpenShots_2.0.4_amd64.deb) |
 
 The macOS builds are code-signed and notarized with an Apple Developer ID certificate.
 
@@ -110,6 +110,99 @@ npx tauri build
 | Delete selected | `Delete` / `Backspace` | `Delete` / `Backspace` |
 | Reset zoom | `Cmd+0` | `Ctrl+0` |
 | Tools | `V` `A` `R` `E` `T` `M` `B` `P` | Same |
+
+## CLI Reference
+
+OpenShots includes a CLI (`openshots-cli`) for batch processing and automation. After building from source, the binary is at `src-tauri/target/debug/openshots-cli` (or `release/` for production builds).
+
+### Presets
+
+Presets define the beautification style: background, padding, corner radius, shadow, and inset border. 7 built-in presets ship with OpenShots. User presets are stored in `~/.openshots/presets.json`.
+
+```bash
+# List all available presets
+openshots-cli list-presets
+
+# Show full config of a preset
+openshots-cli show-preset ocean
+
+# Copy a built-in preset for customization
+openshots-cli copy-preset ocean --new-name my-ocean
+
+# Create a new preset from scratch
+openshots-cli create-preset my-brand
+
+# Open presets file in your $EDITOR
+openshots-cli edit-presets
+```
+
+### Beautify
+
+Apply a preset to one or more screenshots. Adds background, padding, corner radius, shadow, and inset border.
+
+```bash
+# Single image
+openshots-cli beautify --preset ocean --input screenshot.png --output ./out --format png
+
+# Batch process with glob
+openshots-cli beautify --preset clean-dark --input "screenshots/*.png" --output ./out --format png
+
+# Export as WebP
+openshots-cli beautify --preset vibrant-sunset --input shot.png --output ./out --format webp --quality 85
+```
+
+### Annotate
+
+Add text annotations to images. Use `--preset` to also apply beautification.
+
+```bash
+# Text on raw image
+openshots-cli annotate --input shot.png --output annotated.png \
+  --text "Draft" --text-x 50 --text-y 50 --font-size 48 --color "#ff0000"
+
+# Text + preset beautification
+openshots-cli annotate --input shot.png --output styled.png \
+  --text "v2.0" --text-x 20 --text-y 20 --font-size 32 --color "#ffffff" \
+  --preset ocean
+```
+
+### Privacy
+
+Pixelate regions to hide sensitive content. Coordinates are `x,y,width,height`. Use `;` to separate multiple regions.
+
+```bash
+# Pixelate a region
+openshots-cli privacy --input shot.png --output redacted.png \
+  --regions "100,100,300,200" --intensity 20
+
+# Multiple regions + preset
+openshots-cli privacy --input shot.png --output styled.png \
+  --regions "100,100,300,200;500,50,150,100" --intensity 25 \
+  --preset clean-dark
+```
+
+### Export
+
+Convert format, adjust quality, or scale. Use `--preset` to beautify during export.
+
+```bash
+# Convert PNG to WebP
+openshots-cli export --input shot.png --output shot.webp --format webp --quality 80
+
+# Export at 2x scale
+openshots-cli export --input shot.png --output shot@2x.png --format png --scale 2
+
+# Convert + beautify
+openshots-cli export --input shot.png --output styled.webp --format webp --quality 85 --preset ocean
+```
+
+### Render
+
+Render an `.openshots` project file to an image.
+
+```bash
+openshots-cli render --input project.openshots --output final.png --format png --quality 90
+```
 
 ## Community
 
