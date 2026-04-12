@@ -105,7 +105,7 @@ export default function ExportPopover({ stageRef, anchorEl, onClose }: ExportPop
       const currentScale = stage.scaleX();
       const pixelRatio = scale / currentScale;
       const dataUrl = stage.toDataURL({ pixelRatio, mimeType: "image/png" });
-      const base64 = dataUrl.split(",")[1];
+      const base64 = dataUrl.split(",")[1] ?? "";
       const binary = atob(base64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
