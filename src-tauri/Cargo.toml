@@ -1,6 +1,6 @@
 [package]
 name = "openshots"
-version = "2.0.3"
+version = "2.0.4"
 edition = "2021"
 default-run = "openshots"
 
@@ -27,6 +27,8 @@ base64 = "0.22"
 clap = { version = "4", features = ["derive"] }
 glob = "0.3"
 tauri-plugin-clipboard-manager = "2"
+imageproc = "0.25"
+ab_glyph = "0.2"
 
 [[bin]]
 name = "openshots-cli"

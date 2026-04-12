@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CanvasBackground } from "./canvas.store";
+import { DEFAULT_PRESETS } from "../lib/default-presets";
 
 export interface CanvasPreset {
   id: string;
@@ -43,3 +44,16 @@ export const usePresetStore = create<PresetState>()(
     { name: "preset-store" },
   ),
 );
+
+// Seed default presets on first launch (empty store after hydration)
+const unsub = usePresetStore.persist.onFinishHydration(() => {
+  const state = usePresetStore.getState();
+  if (state.presets.length === 0) {
+    const defaults = DEFAULT_PRESETS.map((p) => ({
+      ...p,
+      id: crypto.randomUUID(),
+    }));
+    usePresetStore.setState({ presets: defaults });
+  }
+  unsub();
+});
