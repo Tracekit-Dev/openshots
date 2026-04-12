@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
 import { Copy, Check } from "lucide-react";
+import { writeImage } from "@tauri-apps/plugin-clipboard-manager";
+import { Image } from "@tauri-apps/api/image";
 import Konva from "konva";
 
 interface DragBarProps {
@@ -14,12 +16,13 @@ export default function DragBar({ stageRef }: DragBarProps) {
     if (!stage) return;
 
     try {
-      const dataUrl = stage.toDataURL({ pixelRatio: 2 });
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
-      ]);
+      const currentScale = stage.scaleX();
+      const pixelRatio = 2 / currentScale;
+      const dataUrl = stage.toDataURL({ pixelRatio, mimeType: "image/png" });
+      const resp = await fetch(dataUrl);
+      const buffer = await resp.arrayBuffer();
+      const tauriImage = await Image.fromBytes(new Uint8Array(buffer));
+      await writeImage(tauriImage);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {

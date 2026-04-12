@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Stage } from "react-konva";
+import { GripHorizontal } from "lucide-react";
 import Konva from "konva";
 import { useCanvasStore } from "../../stores/canvas.store";
 import { useToolStore } from "../../stores/tool.store";
@@ -29,6 +30,9 @@ export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStage
   const [cropAspectRatio, setCropAspectRatio] = useState<number | null>(null);
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  // Crop toolbar drag state
+  const [cropDragOffset, setCropDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const cropDragRef = useRef(false);
   // Background removal state
   const [removalState, setRemovalState] = useState<{
     imageId: string | null;
@@ -155,7 +159,31 @@ export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStage
     setActiveTool("select");
     setCropRect(null);
     setCropAspectRatio(null);
+    setCropDragOffset(null);
   }, [setActiveTool]);
+
+  // Crop toolbar drag handler
+  const handleCropDragStart = useCallback((e: React.MouseEvent) => {
+    cropDragRef.current = true;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const offsetX = cropDragOffset?.x ?? 0;
+    const offsetY = cropDragOffset?.y ?? 0;
+
+    const onMove = (ev: MouseEvent) => {
+      setCropDragOffset({
+        x: offsetX + (ev.clientX - startX),
+        y: offsetY + (ev.clientY - startY),
+      });
+    };
+    const onUp = () => {
+      cropDragRef.current = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [cropDragOffset]);
 
   // Base scale fits canvas to container (contain mode), zoom multiplies it
   const baseScale = Math.min(
@@ -581,7 +609,18 @@ export default function CanvasStage({ stageRef, onBackgroundClick }: CanvasStage
 
       {/* Crop toolbar */}
       {isCropActive && (
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-3 py-2 backdrop-blur-sm z-10">
+        <div
+          className="absolute top-4 left-1/2 flex items-center gap-2 bg-zinc-900/90 border border-zinc-800/60 rounded-lg px-3 py-2 backdrop-blur-sm z-10"
+          style={{
+            transform: `translateX(-50%) translate(${cropDragOffset?.x ?? 0}px, ${cropDragOffset?.y ?? 0}px)`,
+          }}
+        >
+          <div
+            onMouseDown={handleCropDragStart}
+            className="cursor-grab active:cursor-grabbing text-zinc-500 hover:text-zinc-300 transition-colors mr-1"
+          >
+            <GripHorizontal size={14} />
+          </div>
           {[
             { label: "Free", value: null },
             { label: "16:9", value: 16 / 9 },
